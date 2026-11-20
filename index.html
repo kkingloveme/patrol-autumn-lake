@@ -1,0 +1,2948 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171425">
+  <title>PATROL — Autumn Lake</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #12101b;
+      --sun: #ffd69a;
+      --peach: #f5a985;
+      --amber: #ffba62;
+      --mint: #a9d9cb;
+      --paper: #ece6d7;
+      --muted: #8d8c9f;
+      --panel: #211d2b;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    body {
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 70% 20%, #6a4c66 0, transparent 38%),
+        linear-gradient(#403554, #191622 75%);
+    }
+
+    #world,
+    #hud {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #world {
+      z-index: 1;
+      cursor: crosshair;
+    }
+
+    #hud {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #scanlines {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.15;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 2px,
+        rgba(12, 10, 20, 0.24) 3px,
+        rgba(12, 10, 20, 0.24) 4px
+      );
+      mix-blend-mode: multiply;
+    }
+
+    #vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 48%, rgba(9, 7, 16, 0.55) 125%);
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(rgba(18, 16, 27, 0.28), rgba(18, 16, 27, 0.92)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23252136'/%3E%3Crect x='0' y='0' width='2' height='2' fill='%23342d49'/%3E%3Crect x='8' y='8' width='2' height='2' fill='%23342d49'/%3E%3C/svg%3E");
+      transition: opacity 500ms steps(5, end);
+    }
+
+    #loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader-card {
+      width: min(480px, calc(100vw - 48px));
+      padding: 26px 28px 24px;
+      border: 2px solid #655b7a;
+      background: #1b1825;
+      box-shadow: 8px 8px 0 #0d0b12, inset 0 0 0 2px #282237;
+    }
+
+    .loader-kicker {
+      color: var(--amber);
+      font-family: "Press Start 2P", monospace;
+      font-size: 9px;
+      line-height: 1.7;
+      letter-spacing: 1px;
+    }
+
+    .loader-title {
+      margin: 12px 0 9px;
+      color: #fff2d2;
+      font-family: "Press Start 2P", monospace;
+      font-size: clamp(22px, 6vw, 34px);
+      line-height: 1.25;
+      text-shadow: 3px 3px 0 #5c3550;
+    }
+
+    .loader-copy {
+      margin: 0 0 20px;
+      color: #a6a0b5;
+      font-size: 11px;
+      line-height: 1.6;
+      letter-spacing: 0.4px;
+    }
+
+    .progress-shell {
+      height: 14px;
+      padding: 3px;
+      border: 1px solid #6e627e;
+      background: #0f0d15;
+    }
+
+    #progress {
+      width: 0%;
+      height: 100%;
+      background:
+        repeating-linear-gradient(90deg, var(--sun) 0 6px, #d78d60 6px 8px);
+      transition: width 80ms linear;
+    }
+
+    .loader-foot {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      color: #807a90;
+      font-size: 9px;
+      letter-spacing: 0.8px;
+    }
+
+    #sound-toggle {
+      position: absolute;
+      z-index: 8;
+      top: max(15px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      padding: 8px 10px;
+      border: 1px solid rgba(239, 224, 193, 0.42);
+      border-radius: 0;
+      color: #ded7c7;
+      background: rgba(22, 19, 31, 0.72);
+      font: 600 9px/1.2 "IBM Plex Mono", monospace;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 rgba(8, 6, 12, 0.36);
+    }
+
+    #sound-toggle:hover,
+    #sound-toggle:focus-visible {
+      border-color: var(--amber);
+      color: var(--sun);
+      outline: none;
+    }
+
+    #touch-controls {
+      position: absolute;
+      z-index: 9;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+    }
+
+    .touch-cluster {
+      position: absolute;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(2, 48px);
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .touch-cluster.left {
+      left: max(16px, env(safe-area-inset-left));
+    }
+
+    .touch-cluster.right {
+      right: max(16px, env(safe-area-inset-right));
+    }
+
+    .touch-button {
+      border: 1px solid rgba(245, 226, 191, 0.42);
+      border-radius: 2px;
+      color: #f0e7d6;
+      background: rgba(25, 21, 36, 0.72);
+      font: 600 10px/1 "IBM Plex Mono", monospace;
+      box-shadow: 3px 3px 0 rgba(8, 6, 12, 0.44);
+      touch-action: none;
+    }
+
+    .touch-button.active,
+    .touch-button:active {
+      transform: translate(2px, 2px);
+      border-color: var(--amber);
+      color: var(--sun);
+      background: rgba(74, 48, 55, 0.85);
+      box-shadow: 1px 1px 0 rgba(8, 6, 12, 0.44);
+    }
+
+    .touch-button.wide {
+      grid-column: span 2;
+    }
+
+    .touch-button.fire {
+      color: #ffe2d6;
+      border-color: rgba(244, 129, 101, 0.65);
+    }
+
+    #unsupported {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      color: #ffe3b9;
+      background: #17131e;
+      text-align: center;
+      font: 14px/1.6 "IBM Plex Mono", monospace;
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      #touch-controls {
+        display: block;
+      }
+
+      #sound-toggle {
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .touch-cluster {
+        grid-template-columns: repeat(3, 44px);
+        grid-template-rows: repeat(2, 42px);
+      }
+    }
+  </style>
+</head>
+<body data-state="booting">
+  <main id="game" aria-label="Patrol pixel flight game">
+    <canvas id="world" aria-label="Programmatic autumn lake world"></canvas>
+    <canvas id="hud" aria-label="Flight instruments and heads-up display"></canvas>
+    <div id="scanlines"></div>
+    <div id="vignette"></div>
+
+    <button id="sound-toggle" type="button" aria-pressed="false" title="Toggle synthesized sound (M)">SOUND / OFF</button>
+
+    <div id="touch-controls" aria-label="Touch flight controls">
+      <div class="touch-cluster left">
+        <button class="touch-button" data-hold="left" aria-label="Turn left">LEFT</button>
+        <button class="touch-button" data-hold="up" aria-label="Climb">UP</button>
+        <button class="touch-button" data-hold="right" aria-label="Turn right">RIGHT</button>
+        <button class="touch-button wide" data-hold="down" aria-label="Dive">DOWN</button>
+        <button class="touch-button" data-hold="burn" aria-label="Afterburner">BURN</button>
+      </div>
+      <div class="touch-cluster right">
+        <button class="touch-button" data-tap="camera" aria-label="Cycle camera">VIEW</button>
+        <button class="touch-button" data-hold="burn" aria-label="Afterburner">BURN</button>
+        <button class="touch-button fire" data-tap="fire" aria-label="Fire missile">FIRE</button>
+        <button class="touch-button wide" data-tap="roll" aria-label="Barrel roll">BARREL ROLL</button>
+        <button class="touch-button" data-tap="sound" aria-label="Toggle sound">SOUND</button>
+      </div>
+    </div>
+
+    <section id="loading" aria-live="polite">
+      <div class="loader-card">
+        <div class="loader-kicker">PATROL / FLIGHT 04</div>
+        <h1 class="loader-title">AUTUMN LAKE</h1>
+        <p class="loader-copy">Building a seamless patrol area from noise, light and a little too much turbulence.</p>
+        <div class="progress-shell"><div id="progress"></div></div>
+        <div class="loader-foot"><span>TOPOGRAPHY</span><span id="progress-text">0%</span></div>
+      </div>
+    </section>
+
+    <div id="unsupported">
+      This patrol requires WebGL2. Try a current version of Chrome, Edge, Firefox or Safari with hardware acceleration enabled.
+    </div>
+  </main>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const $ = (selector) => document.querySelector(selector);
+    const worldCanvas = $("#world");
+    const hudCanvas = $("#hud");
+    const loading = $("#loading");
+    const progressBar = $("#progress");
+    const progressText = $("#progress-text");
+    const soundButton = $("#sound-toggle");
+    const touchControls = $("#touch-controls");
+    const params = new URLSearchParams(location.search);
+    const debugState = {};
+    window.patrolDebug = debugState;
+    window.addEventListener("error", (event) => {
+      const message = event.error && event.error.stack || event.message || "Unknown runtime error";
+      debugState.runtimeError = message;
+      document.body.dataset.runtimeError = String(message).slice(0, 400);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      const message = event.reason && event.reason.stack || String(event.reason);
+      debugState.runtimeError = message;
+      document.body.dataset.runtimeError = String(message).slice(0, 400);
+    });
+
+    const TAU = Math.PI * 2;
+    const WORLD_SIZE = 9000;
+    const SEA_LEVEL = 0;
+    const CLOUD_HEIGHT = 142;
+    const TERRAIN_WORKER_SIZE = 512;
+    const MAX_RENDER_HEIGHT = 360;
+    const MIN_RENDER_HEIGHT = 196;
+    const sunDirection = normalize3({ x: -0.68, y: 0.19, z: -0.56 });
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const smoothstep = (a, b, x) => {
+      const t = clamp((x - a) / (b - a), 0, 1);
+      return t * t * (3 - 2 * t);
+    };
+    const damp = (a, b, lambda, dt) => lerp(a, b, 1 - Math.exp(-lambda * dt));
+    const wrapAngle = (a) => {
+      a = (a + Math.PI) % TAU;
+      if (a < 0) a += TAU;
+      return a - Math.PI;
+    };
+    const fract = (v) => v - Math.floor(v);
+    const mod = (n, m) => ((n % m) + m) % m;
+
+    function normalize3(v) {
+      const l = Math.hypot(v.x, v.y, v.z) || 1;
+      return { x: v.x / l, y: v.y / l, z: v.z / l };
+    }
+
+    function add3(a, b) {
+      return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+    }
+
+    function sub3(a, b) {
+      return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+    }
+
+    function mul3(a, s) {
+      return { x: a.x * s, y: a.y * s, z: a.z * s };
+    }
+
+    function dot3(a, b) {
+      return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    function cross3(a, b) {
+      return {
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x
+      };
+    }
+
+    function norm2(x, z) {
+      const l = Math.hypot(x, z) || 1;
+      return { x: x / l, z: z / l };
+    }
+
+    function perspective(fov, aspect, near, far) {
+      const f = 1 / Math.tan(fov / 2);
+      return new Float32Array([
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (far + near) / (near - far), -1,
+        0, 0, (2 * far * near) / (near - far), 0
+      ]);
+    }
+
+    function lookView(position, forward, right, up) {
+      return new Float32Array([
+        right.x, up.x, -forward.x, 0,
+        right.y, up.y, -forward.y, 0,
+        right.z, up.z, -forward.z, 0,
+        -dot3(right, position), -dot3(up, position), dot3(forward, position), 1
+      ]);
+    }
+
+    function multiply4(a, b) {
+      const out = new Float32Array(16);
+      for (let c = 0; c < 4; c++) {
+        for (let r = 0; r < 4; r++) {
+          out[c * 4 + r] =
+            a[r] * b[c * 4] +
+            a[4 + r] * b[c * 4 + 1] +
+            a[8 + r] * b[c * 4 + 2] +
+            a[12 + r] * b[c * 4 + 3];
+        }
+      }
+      return out;
+    }
+
+    function transform4(m, v) {
+      return {
+        x: m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12],
+        y: m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13],
+        z: m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14],
+        w: m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15]
+      };
+    }
+
+    function aircraftBasis(heading, pitch, roll) {
+      const cp = Math.cos(pitch);
+      const forward = {
+        x: Math.sin(heading) * cp,
+        y: Math.sin(pitch),
+        z: -Math.cos(heading) * cp
+      };
+      const worldUp = { x: 0, y: 1, z: 0 };
+      let right = normalize3(cross3(forward, worldUp));
+      let up = normalize3(cross3(right, forward));
+      const cr = Math.cos(roll);
+      const sr = Math.sin(roll);
+      const rotatedRight = normalize3(add3(mul3(right, cr), mul3(up, sr)));
+      const rotatedUp = normalize3(add3(mul3(up, cr), mul3(right, -sr)));
+      return { forward, right: rotatedRight, up: rotatedUp };
+    }
+
+    function modelMatrix(position, basis) {
+      return new Float32Array([
+        basis.right.x, basis.right.y, basis.right.z, 0,
+        basis.up.x, basis.up.y, basis.up.z, 0,
+        -basis.forward.x, -basis.forward.y, -basis.forward.z, 0,
+        position.x, position.y, position.z, 1
+      ]);
+    }
+
+    class AudioSynth {
+      constructor() {
+        this.context = null;
+        this.enabled = false;
+        this.engine = null;
+        this.engineGain = null;
+        this.filter = null;
+      }
+
+      start() {
+        if (!this.context) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          this.context = new AudioContext();
+          this.master = this.context.createGain();
+          this.master.gain.value = 0.18;
+          this.master.connect(this.context.destination);
+
+          this.engine = this.context.createOscillator();
+          this.engine.type = "sawtooth";
+          this.engine.frequency.value = 58;
+          this.filter = this.context.createBiquadFilter();
+          this.filter.type = "lowpass";
+          this.filter.frequency.value = 270;
+          this.engineGain = this.context.createGain();
+          this.engineGain.gain.value = 0.06;
+          this.engine.connect(this.filter);
+          this.filter.connect(this.engineGain);
+          this.engineGain.connect(this.master);
+          this.engine.start();
+        }
+        this.context.resume();
+        this.enabled = true;
+      }
+
+      stop() {
+        this.enabled = false;
+        if (this.context) this.context.suspend();
+      }
+
+      toggle() {
+        if (this.enabled) this.stop();
+        else this.start();
+        return this.enabled;
+      }
+
+      update(speed, burn) {
+        if (!this.enabled || !this.context) return;
+        const now = this.context.currentTime;
+        this.engine.frequency.setTargetAtTime(44 + speed * 0.13 + (burn ? 17 : 0), now, 0.08);
+        this.engineGain.gain.setTargetAtTime(burn ? 0.105 : 0.055, now, 0.07);
+        this.filter.frequency.setTargetAtTime(burn ? 620 : 280, now, 0.1);
+      }
+
+      noiseBurst(duration, level, lowpass) {
+        if (!this.enabled || !this.context) return;
+        const length = Math.floor(this.context.sampleRate * duration);
+        const buffer = this.context.createBuffer(1, length, this.context.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) {
+          const fade = 1 - i / length;
+          data[i] = (Math.random() * 2 - 1) * fade;
+        }
+        const source = this.context.createBufferSource();
+        const filter = this.context.createBiquadFilter();
+        const gain = this.context.createGain();
+        filter.type = "lowpass";
+        filter.frequency.value = lowpass;
+        gain.gain.setValueAtTime(level, this.context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + duration);
+        source.buffer = buffer;
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+        source.start();
+      }
+
+      missile() {
+        this.noiseBurst(0.55, 0.2, 1700);
+      }
+
+      boom() {
+        this.noiseBurst(1.1, 0.42, 340);
+      }
+    }
+
+    const audio = new AudioSynth();
+
+    let gl = worldCanvas.getContext("webgl2", {
+      antialias: false,
+      alpha: false,
+      depth: true,
+      powerPreference: "high-performance",
+      preserveDrawingBuffer: true
+    });
+
+    if (!gl) {
+      $("#unsupported").style.display = "grid";
+      loading.style.display = "none";
+      document.body.dataset.state = "unsupported";
+      return;
+    }
+
+    const hud = hudCanvas.getContext("2d", { alpha: true, desynchronized: true });
+    gl.getExtension("EXT_color_buffer_float");
+    gl.getExtension("OES_texture_float_linear");
+
+    const state = {
+      started: false,
+      paused: params.has("pause"),
+      time: 0,
+      frame: 0,
+      mode: 0,
+      modeName: ["TOP", "CHASE", "COCKPIT"],
+      pointer: { x: 0, y: 0, active: false, inside: false },
+      firstMouse: false,
+      pointerDown: false,
+      pointerStart: 0,
+      pointerStartPos: { x: 0, y: 0 },
+      pointerDistance: 0,
+      keyboard: { left: false, right: false, up: false, down: false },
+      touch: { left: false, right: false, up: false, down: false, burn: false },
+      afterburnerVisual: 0,
+      missiletapCooldown: 0,
+      lastTime: performance.now(),
+      renderHeight: MAX_RENDER_HEIGHT,
+      renderWidth: 640,
+      titleAge: 0,
+      dpr: 1,
+      lowFpsFrames: 0,
+      lastResolutionChange: 0,
+      modeFlash: 0,
+      warnings: [],
+      error: null
+    };
+
+    debugState.state = state;
+
+    const plane = {
+      x: 804,
+      y: 255,
+      z: -675,
+      heading: -0.55,
+      pitch: 0.035,
+      roll: 0,
+      airspeed: 145,
+      maneuverRoll: 0,
+      rollVelocity: 0,
+      rollActive: false,
+      turnSmooth: 0,
+      pitchRateSmooth: 0,
+      safeG: 1
+    };
+
+    const camera = {
+      position: { x: 804, y: 1435, z: 15 },
+      forward: { x: 0, y: -0.83, z: 0.55 },
+      right: { x: 1, y: 0, z: 0 },
+      up: { x: 0, y: 0.55, z: 0.83 },
+      fov: 58 * Math.PI / 180
+    };
+
+    const missiles = [];
+    const impacts = [];
+    const smokePuffs = [];
+    const explosions = [];
+    const vapor = [];
+    const spray = [];
+    let missileAmmo = 4;
+    let reloadTimer = 0;
+    let heightData = null;
+    let landShader = null;
+    let planeShader = null;
+    let planeGeometry = null;
+    let heightTexture = null;
+
+    const terrainVertexSource = `#version 300 es
+      in vec2 aPosition;
+      out vec2 vUv;
+      void main() {
+        vUv = aPosition * 0.5 + 0.5;
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `;
+
+    const terrainFragmentSource = `#version 300 es
+      precision highp float;
+
+      in vec2 vUv;
+      out vec4 outColor;
+
+      uniform sampler2D uHeight;
+      uniform vec2 uResolution;
+      uniform vec3 uCameraPosition;
+      uniform vec3 uCameraForward;
+      uniform vec3 uCameraRight;
+      uniform vec3 uCameraUp;
+      uniform vec3 uSunDirection;
+      uniform float uTime;
+      uniform float uFov;
+      uniform float uNear;
+      uniform float uFar;
+      uniform vec4 uImpacts[4];
+
+      const float WORLD_SIZE = 9000.0;
+      const float SEA_LEVEL = 0.0;
+      const float CLOUD_HEIGHT = 142.0;
+
+      float hash12(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      float valueNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash12(i);
+        float b = hash12(i + vec2(1.0, 0.0));
+        float c = hash12(i + vec2(0.0, 1.0));
+        float d = hash12(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm2(vec2 p) {
+        float n = 0.0;
+        float amp = 0.56;
+        for (int i = 0; i < 4; i++) {
+          n += valueNoise(p) * amp;
+          p = p * 2.03 + vec2(11.7, 5.1);
+          amp *= 0.48;
+        }
+        return n;
+      }
+
+      float rawHeight(vec2 worldXZ) {
+        vec2 uv = fract((worldXZ + WORLD_SIZE * 0.5) / WORLD_SIZE);
+        float encoded = texture(uHeight, uv).r;
+        return (encoded - 0.17) * 560.0;
+      }
+
+      vec3 terrainNormal(vec2 p, float h) {
+        float e = 5.2;
+        float hx = rawHeight(p + vec2(e, 0.0)) - rawHeight(p - vec2(e, 0.0));
+        float hz = rawHeight(p + vec2(0.0, e)) - rawHeight(p - vec2(0.0, e));
+        return normalize(vec3(-hx, 2.0 * e, -hz));
+      }
+
+      vec2 branchlessDither(vec2 screenPos) {
+        ivec2 q = ivec2(mod(screenPos, 4.0));
+        float m[16] = float[16](
+           0.0,  8.0,  2.0, 10.0,
+          12.0,  4.0, 14.0,  6.0,
+           3.0, 11.0,  1.0,  9.0,
+          15.0,  7.0, 13.0,  5.0
+        );
+        int index = q.y * 4 + q.x;
+        return vec2(m[index] / 16.0 - 0.5, 0.0);
+      }
+
+      vec3 quantizeDither(vec3 color, vec2 screenPos) {
+        float d = branchlessDither(screenPos).x;
+        color += d * 0.055;
+        color = floor(color * 12.0 + 0.5) / 12.0;
+        return clamp(color, 0.0, 1.0);
+      }
+
+      vec3 skyColor(vec3 direction) {
+        vec3 d = normalize(direction);
+        float hemi = clamp(d.y * 0.72 + 0.38, 0.0, 1.0);
+        vec3 lowWarm = vec3(0.76, 0.46, 0.43);
+        vec3 lowCool = vec3(0.40, 0.29, 0.51);
+        vec3 zenith = vec3(0.12, 0.15, 0.29);
+        float towardSun = smoothstep(-0.4, 0.9, dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(uSunDirection.x, 0.0, uSunDirection.z))));
+        vec3 horizon = mix(lowCool, lowWarm, towardSun);
+        vec3 color = mix(horizon, zenith, smoothstep(0.04, 0.72, hemi));
+
+        float haze = 1.0 - smoothstep(0.0, 0.16, abs(d.y));
+        color = mix(color, mix(vec3(0.54, 0.40, 0.54), vec3(0.94, 0.62, 0.35), towardSun), haze * 0.35);
+
+        float cloudPlane = max(0.0, d.y) * 5.0 + 3.0;
+        vec2 cloudUv = d.xz / max(0.08, d.y + 0.2) * 1.3;
+        float wisps = smoothstep(0.64, 0.82, fbm2(cloudUv + vec2(uTime * 0.002, -0.7)));
+        wisps *= smoothstep(0.025, 0.32, d.y) * (1.0 - smoothstep(0.45, 0.84, d.y));
+        color = mix(color, vec3(0.70, 0.53, 0.60), wisps * 0.36);
+
+        float sunDot = max(0.0, dot(d, uSunDirection));
+        float sunDisc = step(0.99825, sunDot);
+        float sunGlow = pow(sunDot, 24.0) * 0.18 + pow(sunDot, 160.0) * 0.32;
+        color += vec3(1.0, 0.66, 0.35) * sunGlow;
+        color = mix(color, vec3(1.0, 0.86, 0.54), sunDisc);
+        return color;
+      }
+
+      float cloudDensity(vec2 p) {
+        vec2 drift = vec2(uTime * 2.2, uTime * 0.55);
+        float broad = fbm2((p + drift) * 0.0019);
+        float detail = valueNoise((p + drift * 1.7) * 0.009);
+        float cells = smoothstep(0.49, 0.68, broad * 0.82 + detail * 0.24);
+        return cells;
+      }
+
+      float cloudShadow(vec2 p) {
+        vec2 sunFlat = normalize(uSunDirection.xz);
+        vec2 samplePoint = p + sunFlat * 260.0;
+        return mix(0.58, 1.0, smoothstep(0.39, 0.68, cloudDensity(samplePoint)));
+      }
+
+      float sunShadow(vec3 p, vec3 normal) {
+        float shadow = 1.0;
+        vec3 point = p + normal * 0.8;
+        for (int i = 1; i <= 12; i++) {
+          float fi = float(i);
+          point += uSunDirection * (10.0 + fi * 4.0);
+          float h = rawHeight(point.xz);
+          if (point.y < h) {
+            shadow = 0.62;
+            break;
+          }
+        }
+        return shadow * cloudShadow(p.xz);
+      }
+
+      float impactField(vec2 p, out float ember) {
+        float scorch = 0.0;
+        ember = 0.0;
+        for (int i = 0; i < 4; i++) {
+          float radius = abs(uImpacts[i].z);
+          if (radius <= 0.01) continue;
+          float distanceToImpact = distance(p, uImpacts[i].xy);
+          if (uImpacts[i].z > 0.0) {
+            float burn = 1.0 - smoothstep(radius * 0.12, radius, distanceToImpact);
+            scorch = max(scorch, burn);
+            float ring = smoothstep(radius * 0.9, radius, distanceToImpact) * (1.0 - smoothstep(radius, radius * 1.18, distanceToImpact));
+            ember = max(ember, ring * max(0.0, 1.0 - uImpacts[i].w / 5.0));
+          }
+        }
+        return scorch;
+      }
+
+      vec3 landColor(vec3 p, vec2 screenPos) {
+        float h = rawHeight(p.xz);
+        vec3 n = terrainNormal(p.xz, h);
+        float nw = fbm2(p.xz * 0.0042 + vec2(4.1, -7.3));
+        float patchValue = valueNoise(p.xz * 0.013);
+        vec3 color;
+
+        if (h < 11.0) {
+          color = mix(vec3(0.58, 0.49, 0.37), vec3(0.47, 0.42, 0.33), patchValue);
+        } else if (h < 37.0) {
+          color = mix(vec3(0.36, 0.38, 0.23), vec3(0.50, 0.40, 0.20), patchValue * 0.45);
+        } else if (h < 245.0) {
+          vec3 grass = vec3(0.25, 0.29, 0.20);
+          vec3 rust = vec3(0.51, 0.23, 0.16);
+          vec3 gold = vec3(0.64, 0.39, 0.16);
+          vec3 plum = vec3(0.29, 0.16, 0.20);
+          vec3 forest = mix(rust, gold, smoothstep(0.28, 0.68, nw));
+          forest = mix(forest, plum, smoothstep(0.57, 0.78, patchValue));
+          color = mix(grass, forest, smoothstep(0.27, 0.58, nw));
+          if (patchValue > 0.7) color *= 0.75;
+          float treeScatter = step(0.915, hash12(floor(p.xz * 0.28)));
+          color = mix(color, vec3(0.09, 0.12, 0.11), treeScatter * 0.7);
+        } else if (h < 342.0) {
+          color = mix(vec3(0.30, 0.27, 0.31), vec3(0.43, 0.38, 0.43), patchValue);
+          float cliff = smoothstep(0.58, 0.78, valueNoise(p.xz * 0.038));
+          color = mix(color, vec3(0.22, 0.20, 0.25), cliff * 0.45);
+        } else {
+          float snowLine = 356.0 + (nw - 0.5) * 70.0;
+          color = mix(vec3(0.39, 0.36, 0.42), vec3(0.79, 0.76, 0.71), smoothstep(snowLine, snowLine + 38.0, h));
+        }
+
+        float diff = max(dot(n, uSunDirection), 0.0);
+        float light = 0.42 + diff * 0.68;
+        light *= sunShadow(p, n);
+        float limb = 1.0 + pow(1.0 - clamp(dot(n, -normalize(vec3(uCameraPosition.x - p.x, 0.0, uCameraPosition.z - p.z))), 0.0, 1.0), 2.0) * 0.08;
+        color *= light * limb;
+
+        float ember;
+        float scorch = impactField(p.xz, ember);
+        color = mix(color, vec3(0.055, 0.045, 0.04), scorch * 0.88);
+        color += vec3(0.9, 0.22, 0.05) * ember * 0.24;
+        return quantizeDither(color, screenPos);
+      }
+
+      vec3 waterColor(vec3 p, vec3 rayDirection, vec2 screenPos, float hitDistance) {
+        float ground = rawHeight(p.xz);
+        float depth = max(0.0, -ground);
+        vec3 shallow = vec3(0.26, 0.52, 0.51);
+        vec3 deep = vec3(0.035, 0.095, 0.19);
+        vec3 color = mix(shallow, deep, smoothstep(1.0, 125.0, depth));
+
+        vec3 reflectDir = reflect(normalize(rayDirection), vec3(0.0, 1.0, 0.0));
+        vec3 reflected = skyColor(reflectDir);
+        float fresnel = pow(1.0 - clamp(-rayDirection.y, 0.0, 1.0), 4.2);
+        color = mix(color, reflected * 0.72, 0.16 + fresnel * 0.35);
+
+        float shore = 1.0 - smoothstep(0.0, 7.5, depth);
+        float wave = sin(p.x * 0.063 + p.z * 0.041 + uTime * 1.7) * 0.5 + 0.5;
+        float foam = shore * smoothstep(0.61, 0.82, wave + valueNoise(p.xz * 0.035) * 0.32);
+        color = mix(color, vec3(0.79, 0.79, 0.71), foam * 0.75);
+
+        float glintNoise = hash12(floor(p.xz * vec2(0.43, 0.74)) + floor(uTime * 7.0));
+        float sunPath = pow(max(0.0, dot(reflectDir, uSunDirection)), 18.0);
+        float glint = step(0.965, glintNoise) * sunPath;
+        color += vec3(1.0, 0.78, 0.42) * (sunPath * 0.38 + glint * 0.95);
+
+        for (int i = 0; i < 4; i++) {
+          float radius = abs(uImpacts[i].z);
+          if (radius <= 0.01 || uImpacts[i].z > 0.0) continue;
+          float dist = distance(p.xz, uImpacts[i].xy);
+          float age = uImpacts[i].w;
+          float ringRadius = radius * (0.75 + age * 0.12);
+          float ring = smoothstep(ringRadius * 0.82, ringRadius, dist) * (1.0 - smoothstep(ringRadius, ringRadius * 1.18, dist));
+          color = mix(color, vec3(0.87, 0.88, 0.76), ring * max(0.0, 1.0 - age / 8.0) * 0.82);
+        }
+
+        float fog = smoothstep(2600.0, 8800.0, hitDistance);
+        color = mix(color, vec3(0.55, 0.42, 0.53), fog * 0.3);
+        return quantizeDither(color, screenPos);
+      }
+
+      vec4 cloudShade(vec3 rayOrigin, vec3 rayDirection, float sceneDistance, vec2 screenPos) {
+        if (rayDirection.y > -0.001) return vec4(0.0);
+        float cloudDistance = (CLOUD_HEIGHT - rayOrigin.y) / rayDirection.y;
+        if (cloudDistance <= 0.0 || cloudDistance >= sceneDistance) return vec4(0.0);
+        vec3 p = rayOrigin + rayDirection * cloudDistance;
+        float density = cloudDensity(p.xz);
+        float underside = smoothstep(0.48, 0.73, valueNoise(p.xz * 0.006 + 12.0));
+        float alpha = density * (0.58 + underside * 0.28);
+        if (alpha < 0.04) return vec4(0.0);
+        vec3 tintA = vec3(0.31, 0.28, 0.40);
+        vec3 tintB = vec3(0.78, 0.57, 0.56);
+        vec3 color = mix(tintA, tintB, smoothstep(0.48, 0.88, density));
+        color += vec3(1.0, 0.66, 0.35) * pow(max(dot(normalize(p - uCameraPosition), uSunDirection), 0.0), 10.0) * 0.16;
+        color = quantizeDither(color, screenPos);
+        return vec4(color, alpha * 0.62);
+      }
+
+      float clipDepth(float viewZ) {
+        float depth = (((uFar + uNear) / (uNear - uFar)) * viewZ + (2.0 * uFar * uNear) / (uNear - uFar)) / (-viewZ);
+        return clamp(depth * 0.5 + 0.5, 0.0, 1.0);
+      }
+
+      void main() {
+        vec2 screenPos = gl_FragCoord.xy;
+        float aspect = uResolution.x / uResolution.y;
+        float tanHalf = tan(uFov * 0.5);
+        vec2 centered = (screenPos / uResolution - 0.5) * 2.0;
+        vec3 rayDirection = normalize(
+          uCameraForward +
+          uCameraRight * centered.x * aspect * tanHalf +
+          uCameraUp * centered.y * tanHalf
+        );
+
+        vec3 rayOrigin = uCameraPosition;
+        float t = 1.8;
+        float previousT = t;
+        float hitDistance = 30000.0;
+        bool hitLand = false;
+        bool hitWater = false;
+        vec3 hitPoint = rayOrigin;
+
+        float tSea = 30000.0;
+        if (rayDirection.y < -0.0001) {
+          tSea = (SEA_LEVEL - rayOrigin.y) / rayDirection.y;
+        }
+
+        for (int i = 0; i < 92; i++) {
+          vec3 samplePoint = rayOrigin + rayDirection * t;
+          float terrainHeight = rawHeight(samplePoint.xz);
+          if (terrainHeight > SEA_LEVEL && samplePoint.y <= terrainHeight) {
+            float refineA = previousT;
+            float refineB = t;
+            for (int j = 0; j < 5; j++) {
+              float mid = (refineA + refineB) * 0.5;
+              vec3 midPoint = rayOrigin + rayDirection * mid;
+              if (midPoint.y <= rawHeight(midPoint.xz)) refineB = mid;
+              else refineA = mid;
+            }
+            hitDistance = refineB;
+            hitPoint = rayOrigin + rayDirection * hitDistance;
+            hitLand = true;
+            break;
+          }
+          if (tSea > 0.0 && tSea < 12000.0 && t >= tSea) {
+            hitDistance = tSea;
+            hitPoint = rayOrigin + rayDirection * hitDistance;
+            hitWater = true;
+            break;
+          }
+          previousT = t;
+          float stepSize = max(1.45, t * 0.092);
+          t += stepSize;
+          if (t > 13000.0) break;
+        }
+
+        vec3 color;
+        if (hitLand) {
+          color = landColor(hitPoint, screenPos);
+          float fog = smoothstep(2400.0, 8500.0, hitDistance);
+          color = mix(color, vec3(0.43, 0.33, 0.46), fog * 0.45);
+        } else if (hitWater) {
+          color = waterColor(hitPoint, rayDirection, screenPos, hitDistance);
+        } else {
+          color = skyColor(rayDirection);
+          hitDistance = 100000.0;
+        }
+
+        vec4 cloud = cloudShade(rayOrigin, rayDirection, hitDistance, screenPos);
+        color = mix(color, cloud.rgb, cloud.a);
+
+        float pixelNoise = hash12(screenPos + floor(uTime * 7.0)) - 0.5;
+        color += pixelNoise / 255.0;
+        outColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+
+        if (hitLand || hitWater) {
+          vec3 relative = hitPoint - rayOrigin;
+          float viewZ = dot(relative, uCameraForward);
+          gl_FragDepth = clipDepth(viewZ);
+        } else {
+          gl_FragDepth = 1.0;
+        }
+      }
+    `;
+
+    const planeVertexSource = `#version 300 es
+      in vec3 aPosition;
+      in vec3 aNormal;
+      in vec3 aColor;
+      in vec3 aBarycentric;
+      uniform mat4 uViewProjection;
+      uniform mat4 uModel;
+      out vec3 vNormal;
+      out vec3 vColor;
+      out vec3 vBarycentric;
+      out vec3 vWorldPosition;
+      void main() {
+        vec4 world = uModel * vec4(aPosition, 1.0);
+        vWorldPosition = world.xyz;
+        vNormal = normalize(mat3(uModel) * aNormal);
+        vColor = aColor;
+        vBarycentric = aBarycentric;
+        gl_Position = uViewProjection * world;
+      }
+    `;
+
+    const planeFragmentSource = `#version 300 es
+      precision highp float;
+      in vec3 vNormal;
+      in vec3 vColor;
+      in vec3 vBarycentric;
+      in vec3 vWorldPosition;
+      uniform vec3 uSunDirection;
+      uniform vec3 uCameraPosition;
+      out vec4 outColor;
+      void main() {
+        vec3 normal = normalize(vNormal);
+        vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
+        if (dot(normal, viewDirection) < 0.0) normal = -normal;
+        float diffuse = max(0.0, dot(normal, uSunDirection));
+        float rim = pow(1.0 - max(0.0, dot(normal, viewDirection)), 2.2);
+        vec3 color = vColor * (0.48 + diffuse * 0.72) + vec3(0.22, 0.15, 0.18) * rim * 0.3;
+        color = floor(color * 8.0 + 0.5) / 8.0;
+        float edge = min(vBarycentric.x, min(vBarycentric.y, vBarycentric.z));
+        if (edge < 0.065) color = vec3(0.035, 0.028, 0.05);
+        outColor = vec4(color, 1.0);
+      }
+    `;
+
+    function createProgram(vertexSource, fragmentSource) {
+      const vertex = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vertex, vertexSource);
+      gl.compileShader(vertex);
+      if (!gl.getShaderParameter(vertex, gl.COMPILE_STATUS)) {
+        throw new Error("Vertex shader: " + gl.getShaderInfoLog(vertex));
+      }
+      const fragment = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fragment, fragmentSource);
+      gl.compileShader(fragment);
+      if (!gl.getShaderParameter(fragment, gl.COMPILE_STATUS)) {
+        throw new Error("Fragment shader: " + gl.getShaderInfoLog(fragment));
+      }
+      const program = gl.createProgram();
+      gl.attachShader(program, vertex);
+      gl.attachShader(program, fragment);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Shader link: " + gl.getProgramInfoLog(program));
+      }
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+      return program;
+    }
+
+    function addFace(vertices, a, b, c, color) {
+      const normal = faceNormal(a, b, c);
+      const points = [a, b, c];
+      const bary = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1]
+      ];
+      for (let i = 0; i < 3; i++) {
+        vertices.push(
+          points[i][0], points[i][1], points[i][2],
+          normal.x, normal.y, normal.z,
+          color[0], color[1], color[2],
+          bary[i][0], bary[i][1], bary[i][2]
+        );
+      }
+    }
+
+    function faceNormal(a, b, c) {
+      return normalize3(cross3(
+        { x: b[0] - a[0], y: b[1] - a[1], z: b[2] - a[2] },
+        { x: c[0] - a[0], y: c[1] - a[1], z: c[2] - a[2] }
+      ));
+    }
+
+    function createPlaneGeometry() {
+      const vertices = [];
+      const slate = [0.33, 0.34, 0.40];
+      const gray = [0.48, 0.48, 0.52];
+      const dark = [0.16, 0.15, 0.20];
+      const pale = [0.65, 0.62, 0.59];
+      const gold = [0.67, 0.46, 0.24];
+      const red = [0.48, 0.16, 0.15];
+      const glow = [0.92, 0.50, 0.19];
+
+      const bodyRings = [
+        { z: -25, x: 0.2, y: 0.25, color: dark },
+        { z: -16, x: 1.6, y: 1.4, color: slate },
+        { z: -5, x: 2.8, y: 2.1, color: gray },
+        { z: 11, x: 2.6, y: 1.9, color: slate },
+        { z: 24, x: 1.2, y: 1.2, color: dark }
+      ];
+      const ringOffsets = [
+        [1, 0], [0.65, 0.9], [-0.65, 0.9],
+        [-1, 0], [-0.65, -0.9], [0.65, -0.9]
+      ];
+      for (let r = 0; r < bodyRings.length - 1; r++) {
+        const a = bodyRings[r];
+        const b = bodyRings[r + 1];
+        for (let i = 0; i < ringOffsets.length; i++) {
+          const n = (i + 1) % ringOffsets.length;
+          const a1 = [ringOffsets[i][0] * a.x, ringOffsets[i][1] * a.y, a.z];
+          const a2 = [ringOffsets[n][0] * a.x, ringOffsets[n][1] * a.y, a.z];
+          const b1 = [ringOffsets[i][0] * b.x, ringOffsets[i][1] * b.y, b.z];
+          const b2 = [ringOffsets[n][0] * b.x, ringOffsets[n][1] * b.y, b.z];
+          const color = (i + r) % 3 === 0 ? pale : ((i + r) % 2 === 0 ? gray : slate);
+          addFace(vertices, a1, b1, b2, color);
+          addFace(vertices, a1, b2, a2, color);
+        }
+      }
+
+      const noseTip = [0, 0, -29];
+      const noseRing = bodyRings[0];
+      for (let i = 0; i < ringOffsets.length; i++) {
+        const n = (i + 1) % ringOffsets.length;
+        addFace(
+          vertices,
+          noseTip,
+          [ringOffsets[n][0] * noseRing.x, ringOffsets[n][1] * noseRing.y, noseRing.z],
+          [ringOffsets[i][0] * noseRing.x, ringOffsets[i][1] * noseRing.y, noseRing.z],
+          dark
+        );
+      }
+      const tailRing = bodyRings[bodyRings.length - 1];
+      for (let i = 0; i < ringOffsets.length; i++) {
+        const n = (i + 1) % ringOffsets.length;
+        addFace(
+          vertices,
+          [0, 0, 25.5],
+          [ringOffsets[i][0] * tailRing.x, ringOffsets[i][1] * tailRing.y, tailRing.z],
+          [ringOffsets[n][0] * tailRing.x, ringOffsets[n][1] * tailRing.y, tailRing.z],
+          dark
+        );
+      }
+
+      // Truncated delta wings.
+      addFace(vertices, [-1.6, -0.45, -5], [-26, -0.9, 10], [-18.5, -0.8, 17.5], slate);
+      addFace(vertices, [-1.6, -0.45, -5], [-18.5, -0.8, 17.5], [-2.2, -0.55, 14], gray);
+      addFace(vertices, [-18.5, -0.8, 17.5], [-26, -0.9, 10], [-19.5, -0.7, 18.2], pale);
+      addFace(vertices, [1.6, -0.45, -5], [18.5, -0.8, 17.5], [26, -0.9, 10], slate);
+      addFace(vertices, [1.6, -0.45, -5], [2.2, -0.55, 14], [18.5, -0.8, 17.5], gray);
+      addFace(vertices, [18.5, -0.8, 17.5], [19.5, -0.7, 18.2], [26, -0.9, 10], pale);
+      addFace(vertices, [-2.1, 0.38, -4.4], [-2.2, -0.42, 14], [-18.5, -0.8, 17.5], dark);
+      addFace(vertices, [-2.1, 0.38, -4.4], [-18.5, -0.8, 17.5], [-25.8, -0.9, 10], gold);
+      addFace(vertices, [2.1, 0.38, -4.4], [18.5, -0.8, 17.5], [2.2, -0.42, 14], dark);
+      addFace(vertices, [2.1, 0.38, -4.4], [25.8, -0.9, 10], [18.5, -0.8, 17.5], gold);
+
+      // Twin canted tails with red caps.
+      addFace(vertices, [-3.1, 0.7, 12], [-4.3, 7.4, 20.8], [-1.7, 1.2, 21], slate);
+      addFace(vertices, [-3.1, 0.7, 12], [-1.7, 1.2, 21], [-1.1, 0.5, 16], gray);
+      addFace(vertices, [-4.3, 7.4, 20.8], [-2.3, 7.8, 21], [-1.7, 1.2, 21], pale);
+      addFace(vertices, [-4.3, 7.4, 20.8], [-4.4, 8.5, 21.2], [-2.3, 8.7, 21.4], red);
+      addFace(vertices, [3.1, 0.7, 12], [1.7, 1.2, 21], [1.1, 0.5, 16], gray);
+      addFace(vertices, [3.1, 0.7, 12], [4.3, 7.4, 20.8], [1.7, 1.2, 21], slate);
+      addFace(vertices, [4.3, 7.4, 20.8], [1.7, 1.2, 21], [2.3, 7.8, 21], pale);
+      addFace(vertices, [4.3, 7.4, 20.8], [2.3, 8.7, 21.4], [4.4, 8.5, 21.2], red);
+
+      // Tailplanes.
+      addFace(vertices, [-2.2, 0.3, 17], [-13, 0.25, 20.5], [-8, 0.2, 23], slate);
+      addFace(vertices, [2.2, 0.3, 17], [8, 0.2, 23], [13, 0.25, 20.5], slate);
+
+      // Bubble canopy.
+      const cockpit = [0, 2.65, -9.5];
+      addFace(vertices, cockpit, [-1.3, 1.65, -4.5], [1.3, 1.65, -4.5], gold);
+      addFace(vertices, cockpit, [1.3, 1.65, -4.5], [0.9, 1.55, -0.4], [1.3, 1.25, -0.4], [0.82, 0.61, 0.30]);
+      addFace(vertices, cockpit, [-0.9, 1.55, -0.4], [-1.3, 1.65, -4.5], [-1.3, 1.25, -0.4], [0.82, 0.61, 0.30]);
+      addFace(vertices, [0.9, 1.55, -0.4], [-0.9, 1.55, -0.4], cockpit, [0.43, 0.34, 0.27]);
+
+      // Nozzles and small pylons.
+      for (const side of [-1, 1]) {
+        const x = side * 3.7;
+        addFace(vertices, [x - 0.8, 0.4, 17], [x + 0.8, 0.4, 17], [x + 0.65, -0.6, 22], dark);
+        addFace(vertices, [x - 0.8, 0.4, 17], [x + 0.65, -0.6, 22], [x - 0.65, -0.6, 22], dark);
+        addFace(vertices, [x - 0.65, -0.6, 22], [x + 0.65, -0.6, 22], [x + 0.65, 0.4, 22], glow);
+        addFace(vertices, [x - 0.65, -0.6, 22], [x + 0.65, 0.4, 22], [x - 0.65, 0.4, 22], glow);
+        addFace(vertices, [x, -1.0, 3], [x + side, -1.4, 8], [x, -1.0, 10], pale);
+      }
+
+      return new Float32Array(vertices);
+    }
+
+    function setupPlaneGeometry() {
+      const data = createPlaneGeometry();
+      const vao = gl.createVertexArray();
+      const buffer = gl.createBuffer();
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const stride = 12 * 4;
+      const positionLocation = gl.getAttribLocation(planeShader, "aPosition");
+      const normalLocation = gl.getAttribLocation(planeShader, "aNormal");
+      const colorLocation = gl.getAttribLocation(planeShader, "aColor");
+      const baryLocation = gl.getAttribLocation(planeShader, "aBarycentric");
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(normalLocation);
+      gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, stride, 12);
+      gl.enableVertexAttribArray(colorLocation);
+      gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, stride, 24);
+      gl.enableVertexAttribArray(baryLocation);
+      gl.vertexAttribPointer(baryLocation, 3, gl.FLOAT, false, stride, 36);
+      gl.bindVertexArray(null);
+      return { vao, count: data.length / 12 };
+    }
+
+    function createQuad() {
+      const vao = gl.createVertexArray();
+      const buffer = gl.createBuffer();
+      const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(landShader, "aPosition");
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      gl.bindVertexArray(null);
+      return vao;
+    }
+
+    function workerSource() {
+      return `
+        const SIZE = ${TERRAIN_WORKER_SIZE};
+        let seed = 0x2f6e2b1;
+        function rand() {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296;
+        }
+        function hash(ix, iy, period, salt) {
+          ix = ((ix % period) + period) % period;
+          iy = ((iy % period) + period) % period;
+          let h = Math.imul(ix + salt * 374761393, 668265263) ^ Math.imul(iy + salt * 1442695041, 2246822519);
+          h = Math.imul(h ^ (h >>> 13), 1274126177);
+          return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+        }
+        function smooth(t) { return t * t * (3 - 2 * t); }
+        function smoothRange(a, b, value) {
+          return smooth(Math.max(0, Math.min(1, (value - a) / (b - a))));
+        }
+        function periodicNoise(x, y, period, salt) {
+          const ix = Math.floor(x);
+          const iy = Math.floor(y);
+          const fx = smooth(x - ix);
+          const fy = smooth(y - iy);
+          const a = hash(ix, iy, period, salt);
+          const b = hash(ix + 1, iy, period, salt);
+          const c = hash(ix, iy + 1, period, salt);
+          const d = hash(ix + 1, iy + 1, period, salt);
+          return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+        }
+        function periodicFbm(nx, ny, basePeriod, octaves, salt) {
+          let value = 0;
+          let amplitude = 0.56;
+          let norm = 0;
+          let period = basePeriod;
+          for (let o = 0; o < octaves; o++) {
+            value += periodicNoise(nx * period, ny * period, period, salt + o * 37) * amplitude;
+            norm += amplitude;
+            period *= 2;
+            amplitude *= 0.49;
+          }
+          return value / norm;
+        }
+        const data = new Uint8Array(SIZE * SIZE);
+        const rowBatch = 8;
+        for (let y = 0; y < SIZE; y += rowBatch) {
+          const end = Math.min(SIZE, y + rowBatch);
+          for (let py = y; py < end; py++) {
+            const ny = py / SIZE;
+            for (let px = 0; px < SIZE; px++) {
+              const nx = px / SIZE;
+              let broad = periodicFbm(nx, ny, 4, 6, 7);
+              const ridges = 1 - Math.abs(periodicNoise(nx * 19, ny * 19, 19, 51) * 2 - 1);
+              const basin = periodicNoise(nx * 3, ny * 3, 3, 93);
+              let land = broad * 0.82 + basin * 0.18;
+              land += Math.pow(ridges, 5) * Math.max(0, broad - 0.44) * 0.48;
+              land -= 0.25;
+              const lakeField = periodicFbm(nx, ny, 2, 3, 111);
+              const lakeMask = smoothRange(0.57, 0.69, lakeField);
+              land = land * (1 - lakeMask * 0.78) - lakeMask * 0.20;
+              const v = Math.max(0, Math.min(255, Math.round((0.17 + land) * 255)));
+              data[py * SIZE + px] = v;
+            }
+          }
+          if ((y / rowBatch) % 4 === 0 || end === SIZE) {
+            postMessage({ type: "progress", progress: end / SIZE });
+          }
+        }
+        postMessage({ type: "done", data, size: SIZE }, [data.buffer]);
+      `;
+    }
+
+    function compactHash(ix, iy, period, salt) {
+      ix = mod(ix, period);
+      iy = mod(iy, period);
+      let h = Math.imul(ix + salt * 374761393, 668265263) ^ Math.imul(iy + salt * 1442695041, 2246822519);
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+    }
+
+    function compactNoise(x, y, period, salt) {
+      const ix = Math.floor(x);
+      const iy = Math.floor(y);
+      const fx = smoothstep(0, 1, x - ix);
+      const fy = smoothstep(0, 1, y - iy);
+      const a = compactHash(ix, iy, period, salt);
+      const b = compactHash(ix + 1, iy, period, salt);
+      const c = compactHash(ix, iy + 1, period, salt);
+      const d = compactHash(ix + 1, iy + 1, period, salt);
+      return lerp(lerp(a, b, fx), lerp(c, d, fx), fy);
+    }
+
+    function compactFbm(nx, ny, basePeriod, octaves, salt) {
+      let value = 0;
+      let amplitude = 0.56;
+      let normalizer = 0;
+      let period = basePeriod;
+      for (let octave = 0; octave < octaves; octave++) {
+        value += compactNoise(nx * period, ny * period, period, salt + octave * 37) * amplitude;
+        normalizer += amplitude;
+        period *= 2;
+        amplitude *= 0.49;
+      }
+      return value / normalizer;
+    }
+
+    async function buildFallbackTerrain(onProgress) {
+      const size = 384;
+      const data = new Uint8Array(size * size);
+      const rowBatch = 10;
+      for (let y = 0; y < size; y += rowBatch) {
+        const end = Math.min(size, y + rowBatch);
+        for (let py = y; py < end; py++) {
+          const ny = py / size;
+          for (let px = 0; px < size; px++) {
+            const nx = px / size;
+            const broad = compactFbm(nx, ny, 4, 6, 7);
+            const ridges = 1 - Math.abs(compactNoise(nx * 19, ny * 19, 19, 51) * 2 - 1);
+            const basin = compactNoise(nx * 3, ny * 3, 3, 93);
+            let land = broad * 0.82 + basin * 0.18;
+            land += Math.pow(ridges, 5) * Math.max(0, broad - 0.44) * 0.48;
+            land -= 0.25;
+            const lakeField = compactFbm(nx, ny, 2, 3, 111);
+            const lakeMask = smoothstep(0.57, 0.69, lakeField);
+            land = land * (1 - lakeMask * 0.78) - lakeMask * 0.20;
+            data[py * size + px] = clamp(Math.round((0.17 + land) * 255), 0, 255);
+          }
+        }
+        onProgress(end / size);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      return { data, size };
+    }
+
+    function loadTerrain() {
+      return new Promise((resolve, reject) => {
+        let worker = null;
+        let workerUrl = null;
+        let settled = false;
+        let fallbackStarted = false;
+        let watchdog = null;
+
+        const showProgress = (progress) => {
+          const pct = Math.round(progress * 100);
+          progressBar.style.width = pct + "%";
+          progressText.textContent = pct + "%";
+        };
+
+        const cleanWorker = () => {
+          clearTimeout(watchdog);
+          if (worker) worker.terminate();
+          if (workerUrl) URL.revokeObjectURL(workerUrl);
+        };
+
+        const finish = (terrain, source) => {
+          if (settled) return;
+          settled = true;
+          cleanWorker();
+          document.body.dataset.terrainSource = source;
+          resolve(terrain);
+        };
+
+        const useFallback = () => {
+          if (settled || fallbackStarted) return;
+          fallbackStarted = true;
+          clearTimeout(watchdog);
+          if (worker) worker.terminate();
+          progressText.textContent = "FALLBACK";
+          buildFallbackTerrain(showProgress)
+            .then((terrain) => finish(terrain, "main-thread"))
+            .catch((error) => {
+              if (!settled) {
+                settled = true;
+                reject(error);
+              }
+            });
+        };
+
+        try {
+          const workerBlob = new Blob([workerSource()], { type: "text/javascript" });
+          workerUrl = URL.createObjectURL(workerBlob);
+          worker = new Worker(workerUrl);
+          worker.onmessage = (event) => {
+            if (event.data.type === "progress") {
+              showProgress(event.data.progress);
+            } else if (event.data.type === "done") {
+              finish(event.data, "worker");
+            }
+          };
+          worker.onerror = (event) => {
+            if (event && typeof event.preventDefault === "function") event.preventDefault();
+            useFallback();
+          };
+          worker.postMessage({ type: "generate" });
+          watchdog = setTimeout(useFallback, 4500);
+        } catch (error) {
+          useFallback();
+        }
+      });
+    }
+
+    function uploadHeightfield(data, size) {
+      heightData = { data, size };
+      heightTexture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, heightTexture);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, size, size, 0, gl.RED, gl.UNSIGNED_BYTE, data);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+
+    function terrainElevation(x, z) {
+      if (!heightData) return 0;
+      const size = heightData.size;
+      const fx = fract((x + WORLD_SIZE * 0.5) / WORLD_SIZE) * size;
+      const fz = fract((z + WORLD_SIZE * 0.5) / WORLD_SIZE) * size;
+      const ix = Math.floor(fx);
+      const iz = Math.floor(fz);
+      const tx = fx - ix;
+      const tz = fz - iz;
+      const i0 = mod(ix, size);
+      const i1 = mod(ix + 1, size);
+      const j0 = mod(iz, size);
+      const j1 = mod(iz + 1, size);
+      const a = heightData.data[j0 * size + i0] / 255;
+      const b = heightData.data[j0 * size + i1] / 255;
+      const c = heightData.data[j1 * size + i0] / 255;
+      const d = heightData.data[j1 * size + i1] / 255;
+      const encoded = lerp(lerp(a, b, tx), lerp(c, d, tx), tz);
+      return (encoded - 0.17) * 560;
+    }
+
+    function setupInput() {
+      worldCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
+
+      worldCanvas.addEventListener("pointermove", (event) => {
+        const rect = worldCanvas.getBoundingClientRect();
+        state.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        state.pointer.y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+        state.pointer.active = true;
+        state.pointer.inside = true;
+        if (!state.firstMouse) {
+          state.firstMouse = true;
+          state.titleAge = Math.max(state.titleAge, 1.4);
+        }
+        if (state.pointerDown) {
+          state.pointerDistance = Math.max(
+            state.pointerDistance,
+            Math.hypot(event.clientX - state.pointerStartPos.x, event.clientY - state.pointerStartPos.y)
+          );
+        }
+      });
+
+      worldCanvas.addEventListener("pointerenter", () => {
+        state.pointer.inside = true;
+      });
+
+      worldCanvas.addEventListener("pointerleave", () => {
+        state.pointer.inside = false;
+      });
+
+      worldCanvas.addEventListener("pointerdown", (event) => {
+        if (event.button === 2) {
+          event.preventDefault();
+          fireMissile();
+          return;
+        }
+        if (event.button !== 0) return;
+        state.pointerDown = true;
+        state.pointerStart = performance.now();
+        state.pointerStartPos = { x: event.clientX, y: event.clientY };
+        state.pointerDistance = 0;
+        worldCanvas.setPointerCapture(event.pointerId);
+      });
+
+      worldCanvas.addEventListener("pointerup", (event) => {
+        if (event.button !== 0 || !state.pointerDown) return;
+        const held = performance.now() - state.pointerStart;
+        state.pointerDown = false;
+        if (held < 220 && state.pointerDistance < 12) triggerBarrelRoll();
+      });
+
+      worldCanvas.addEventListener("pointercancel", () => {
+        state.pointerDown = false;
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.repeat && ["Space", "KeyF", "KeyM", "KeyR"].includes(event.code)) return;
+        if (event.code === "ArrowLeft") {
+          state.keyboard.left = true;
+          event.preventDefault();
+        } else if (event.code === "ArrowRight") {
+          state.keyboard.right = true;
+          event.preventDefault();
+        } else if (event.code === "ArrowUp") {
+          state.keyboard.up = true;
+          event.preventDefault();
+        } else if (event.code === "ArrowDown") {
+          state.keyboard.down = true;
+          event.preventDefault();
+        } else if (event.code === "Space") {
+          cycleCamera();
+          event.preventDefault();
+        } else if (event.code === "KeyF" || event.code === "KeyR") {
+          fireMissile();
+          event.preventDefault();
+        } else if (event.code === "KeyM") {
+          toggleSound();
+          event.preventDefault();
+        }
+      });
+
+      window.addEventListener("keyup", (event) => {
+        if (event.code === "ArrowLeft") state.keyboard.left = false;
+        if (event.code === "ArrowRight") state.keyboard.right = false;
+        if (event.code === "ArrowUp") state.keyboard.up = false;
+        if (event.code === "ArrowDown") state.keyboard.down = false;
+      });
+
+      window.addEventListener("blur", () => {
+        Object.keys(state.keyboard).forEach((key) => state.keyboard[key] = false);
+        state.pointerDown = false;
+      });
+
+      soundButton.addEventListener("click", toggleSound);
+
+      touchControls.querySelectorAll("[data-hold]").forEach((button) => {
+        const action = button.dataset.hold;
+        const set = (value) => {
+          if (action === "burn") state.touch.burn = value;
+          else state.touch[action] = value;
+          button.classList.toggle("active", value);
+        };
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          button.setPointerCapture(event.pointerId);
+          set(true);
+        });
+        button.addEventListener("pointerup", () => set(false));
+        button.addEventListener("pointercancel", () => set(false));
+        button.addEventListener("pointerleave", (event) => {
+          if (event.pointerType === "mouse") set(false);
+        });
+      });
+
+      touchControls.querySelectorAll("[data-tap]").forEach((button) => {
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          const action = button.dataset.tap;
+          if (action === "camera") cycleCamera();
+          if (action === "fire") fireMissile();
+          if (action === "roll") triggerBarrelRoll();
+          if (action === "sound") toggleSound();
+        });
+      });
+
+      window.addEventListener("resize", resizeCanvases);
+    }
+
+    function toggleSound() {
+      const enabled = audio.toggle();
+      soundButton.textContent = enabled ? "SOUND / ON" : "SOUND / OFF";
+      soundButton.setAttribute("aria-pressed", String(enabled));
+    }
+
+    function cycleCamera() {
+      state.mode = (state.mode + 1) % 3;
+      state.modeFlash = 1.3;
+    }
+
+    function triggerBarrelRoll() {
+      if (plane.rollActive) return;
+      plane.rollActive = true;
+      plane.rollVelocity = Math.sign(plane.turnSmooth || 1) * Math.PI * 2 / 0.82;
+      plane.maneuverRoll = 0;
+    }
+
+    function fireMissile() {
+      if (state.time < state.missiletapCooldown) return;
+      state.missiletapCooldown = state.time + 0.24;
+      if (missileAmmo <= 0) {
+        state.warnings.push({ text: "RELOADING", age: 0, duration: 1.2 });
+        return;
+      }
+      const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll + plane.maneuverRoll);
+      const side = missileAmmo % 2 === 0 ? -1 : 1;
+      const launch = add3(
+        { x: plane.x, y: plane.y - 0.8, z: plane.z },
+        add3(mul3(basis.forward, 8), mul3(basis.right, side * 5.1))
+      );
+      let target;
+      if (Math.abs(plane.pitch) < 0.12) {
+        const forwardFlat = norm2(basis.forward.x, basis.forward.z);
+        target = {
+          x: plane.x + forwardFlat.x * 2350,
+          y: SEA_LEVEL + 0.5,
+          z: plane.z + forwardFlat.z * 2350
+        };
+      } else {
+        target = add3(
+          { x: plane.x, y: plane.y, z: plane.z },
+          mul3(basis.forward, 2300)
+        );
+      }
+      const direction = normalize3(sub3(target, launch));
+      missiles.push({
+        position: launch,
+        velocity: mul3(direction, 520),
+        target,
+        age: 0,
+        trail: [],
+        smokeTimer: 0
+      });
+      missileAmmo--;
+      audio.missile();
+      state.warnings.push({ text: "FOX TWO", age: 0, duration: 0.85 });
+      if (missileAmmo === 0) reloadTimer = 4.5;
+    }
+
+    function spawnImpact(position) {
+      const ground = terrainElevation(position.x, position.z);
+      const water = ground < SEA_LEVEL;
+      const y = water ? SEA_LEVEL + 0.8 : Math.max(ground, SEA_LEVEL) + 1.2;
+      const impact = {
+        x: position.x,
+        z: position.z,
+        radius: water ? -34 : 42,
+        age: 0,
+        water
+      };
+      impacts.unshift(impact);
+      impacts.length = Math.min(impacts.length, 4);
+      explosions.push({
+        x: impact.x,
+        y,
+        z: impact.z,
+        water,
+        age: 0,
+        particles: createExplosionParticles(impact.x, y, impact.z, water)
+      });
+      document.body.dataset.lastImpact = `${Math.round(impact.x)},${Math.round(y)},${Math.round(impact.z)},${water ? "water" : "land"}`;
+      audio.boom();
+    }
+
+    function createExplosionParticles(x, y, z, water) {
+      const particles = [];
+      const count = water ? 34 : 48;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * TAU;
+        const speed = 18 + Math.random() * 70;
+        const up = water ? 34 + Math.random() * 90 : 12 + Math.random() * 74;
+        particles.push({
+          x, y, z,
+          vx: Math.cos(angle) * speed,
+          vy: up,
+          vz: Math.sin(angle) * speed,
+          age: 0,
+          life: 0.6 + Math.random() * (water ? 1.7 : 1.3),
+          size: 1 + Math.random() * (water ? 4 : 5),
+          type: water ? "water" : "fire"
+        });
+      }
+      return particles;
+    }
+
+    function update(dt) {
+      if (state.paused) return;
+      state.time += dt;
+      state.titleAge += dt;
+      state.modeFlash = Math.max(0, state.modeFlash - dt);
+      state.missiletapCooldown = Math.max(0, state.missiletapCooldown - dt);
+
+      let steerX = 0;
+      let steerY = 0;
+      if (state.keyboard.left || state.touch.left) steerX -= 1;
+      if (state.keyboard.right || state.touch.right) steerX += 1;
+      if (state.keyboard.up || state.touch.up) steerY += 1;
+      if (state.keyboard.down || state.touch.down) steerY -= 1;
+      const manualKeyboard = steerX !== 0 || steerY !== 0;
+
+      if (state.pointer.active && state.pointer.inside && !manualKeyboard) {
+        steerX = Math.abs(state.pointer.x) > 0.055 ? clamp(state.pointer.x * 1.25, -1, 1) : 0;
+        steerY = Math.abs(state.pointer.y) > 0.055 ? clamp(-state.pointer.y * 1.25, -1, 1) : 0;
+      }
+
+      if (!state.firstMouse && !manualKeyboard) {
+        steerX = Math.sin(state.time * 0.31) * 0.38;
+        steerY = Math.sin(state.time * 0.17) * 0.08;
+      }
+
+      let burn = state.pointerDown && performance.now() - state.pointerStart >= 160;
+      burn = burn || state.touch.burn;
+      state.afterburnerVisual = damp(state.afterburnerVisual, burn ? 1 : 0, burn ? 8 : 5, dt);
+
+      const targetSpeed = burn ? 265 : 146;
+      plane.airspeed = damp(plane.airspeed, targetSpeed, burn ? 1.7 : 0.75, dt);
+
+      let turnRate = steerX * 0.72;
+      if (state.mode === 0 && state.pointer.active && state.firstMouse && !manualKeyboard) {
+        const targetHeading = Math.atan2(state.pointer.x, -state.pointer.y);
+        const nearest = plane.heading + wrapAngle(targetHeading - plane.heading);
+        if (Math.hypot(state.pointer.x, state.pointer.y) > 0.08) {
+          turnRate = clamp(wrapAngle(nearest - plane.heading) * 3.1, -0.9, 0.9);
+        } else {
+          turnRate = 0;
+        }
+      }
+      plane.turnSmooth = damp(plane.turnSmooth, turnRate, 5.5, dt);
+      plane.heading += plane.turnSmooth * dt;
+      plane.heading = wrapAngle(plane.heading);
+
+      const pitchInput = steerY * 0.54;
+      plane.pitchRateSmooth = damp(plane.pitchRateSmooth, pitchInput, 5.5, dt);
+      if (Math.abs(pitchInput) > 0.008) {
+        plane.pitch += plane.pitchRateSmooth * dt;
+      } else {
+        plane.pitch = damp(plane.pitch, 0, 0.45, dt);
+      }
+      plane.pitch = clamp(plane.pitch, -0.74, 0.74);
+
+      const targetBank = -steerX * (state.mode === 0 ? 0.34 : 0.92);
+      plane.roll = damp(plane.roll, targetBank, 5.2, dt);
+
+      if (plane.rollActive) {
+        plane.maneuverRoll += plane.rollVelocity * dt;
+        if (Math.abs(plane.maneuverRoll) >= TAU) {
+          plane.maneuverRoll = 0;
+          plane.rollActive = false;
+          plane.rollVelocity = 0;
+        }
+      }
+
+      const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll);
+      const horizontalSpeed = plane.airspeed * Math.cos(plane.pitch);
+      plane.x += basis.forward.x * plane.airspeed * dt;
+      plane.z += basis.forward.z * plane.airspeed * dt;
+      plane.y += basis.forward.y * plane.airspeed * dt;
+
+      if (Math.abs(plane.x) > WORLD_SIZE * 0.5) plane.x = mod(plane.x + WORLD_SIZE * 0.5, WORLD_SIZE) - WORLD_SIZE * 0.5;
+      if (Math.abs(plane.z) > WORLD_SIZE * 0.5) plane.z = mod(plane.z + WORLD_SIZE * 0.5, WORLD_SIZE) - WORLD_SIZE * 0.5;
+
+      const aheadX = plane.x + basis.forward.x * 245;
+      const aheadZ = plane.z + basis.forward.z * 245;
+      const currentGround = terrainElevation(plane.x, plane.z);
+      const aheadGround = terrainElevation(aheadX, aheadZ);
+      const floor = Math.max(SEA_LEVEL, currentGround, aheadGround * 0.86) + 58;
+      if (plane.y < floor) {
+        plane.y = damp(plane.y, floor, 8, dt);
+        if (plane.pitch < 0.28) plane.pitch = damp(plane.pitch, 0.31, 8, dt);
+        state.warnings.push({ text: "PULL UP", age: 0, duration: 0.5 });
+      }
+      plane.y = Math.max(plane.y, SEA_LEVEL + 32);
+      plane.y = Math.min(plane.y, 1120);
+
+      const groundForRadar = Math.max(SEA_LEVEL, currentGround);
+      plane.safeG = 1 + Math.abs(plane.turnSmooth) * 2.7 + state.afterburnerVisual * 0.11;
+      audio.update(plane.airspeed, burn);
+
+      if (reloadTimer > 0) {
+        reloadTimer -= dt;
+        if (reloadTimer <= 0) {
+          missileAmmo = 4;
+          state.warnings.push({ text: "MISSILES READY", age: 0, duration: 1.2 });
+        }
+      }
+
+      updateMissiles(dt);
+      updateEffects(dt);
+      updateCamera(dt, basis);
+    }
+
+    function updateMissiles(dt) {
+      for (let i = missiles.length - 1; i >= 0; i--) {
+        const missile = missiles[i];
+        missile.age += dt;
+        const desired = normalize3(sub3(missile.target, missile.position));
+        const velocityDirection = normalize3(missile.velocity);
+        const nextDirection = normalize3(add3(velocityDirection, mul3(desired, dt * 1.5)));
+        const speed = Math.min(720, 520 + missile.age * 75);
+        missile.velocity = mul3(nextDirection, speed);
+        const previous = { ...missile.position };
+        missile.position = add3(missile.position, mul3(missile.velocity, dt));
+        missile.trail.unshift({ ...missile.position, age: 0 });
+        missile.trail.length = Math.min(28, missile.trail.length);
+        missile.trail.forEach((point) => point.age += dt);
+
+        missile.smokeTimer -= dt;
+        if (missile.smokeTimer <= 0) {
+          missile.smokeTimer = 0.038;
+          smokePuffs.push({
+            x: previous.x,
+            y: previous.y,
+            z: previous.z,
+            age: 0,
+            life: 1.8 + Math.random() * 1.3,
+            size: 2 + Math.random() * 3
+          });
+        }
+
+        const reached = missile.age > 3.1 || dot3(sub3(missile.position, missile.target), sub3(missile.position, missile.target)) < 900;
+        if (reached) {
+          spawnImpact(missile.target);
+          missiles.splice(i, 1);
+        }
+      }
+
+      for (const puff of smokePuffs) {
+        puff.age += dt;
+        puff.y += dt * 2.4;
+      }
+      for (let i = smokePuffs.length - 1; i >= 0; i--) {
+        if (smokePuffs[i].age > smokePuffs[i].life) smokePuffs.splice(i, 1);
+      }
+    }
+
+    function updateEffects(dt) {
+      for (const impact of impacts) impact.age += dt;
+
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        explosion.age += dt;
+        for (const particle of explosion.particles) {
+          particle.age += dt;
+          particle.x += particle.vx * dt;
+          particle.y += particle.vy * dt;
+          particle.z += particle.vz * dt;
+          particle.vy -= (particle.type === "water" ? 35 : 24) * dt;
+          particle.vx *= Math.pow(0.16, dt);
+          particle.vz *= Math.pow(0.16, dt);
+        }
+        if (explosion.age > 8.5) explosions.splice(i, 1);
+      }
+
+      for (const particle of spray) {
+        particle.age += dt;
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        particle.z += particle.vz * dt;
+        particle.vy -= 20 * dt;
+      }
+      for (let i = spray.length - 1; i >= 0; i--) {
+        if (spray[i].age > spray[i].life) spray.splice(i, 1);
+      }
+
+      const ground = terrainElevation(plane.x, plane.z);
+      if (ground < -1 && plane.y < 25) {
+        const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll);
+        for (let i = 0; i < 2; i++) {
+          spray.push({
+            x: plane.x - basis.forward.x * 10 + (Math.random() - 0.5) * 9,
+            y: SEA_LEVEL + 1,
+            z: plane.z - basis.forward.z * 10 + (Math.random() - 0.5) * 9,
+            vx: -basis.forward.x * 22 + (Math.random() - 0.5) * 11,
+            vy: 12 + Math.random() * 18,
+            vz: -basis.forward.z * 22 + (Math.random() - 0.5) * 11,
+            age: 0,
+            life: 0.6 + Math.random() * 0.7
+          });
+        }
+      }
+
+      if (state.frame % 2 === 0 && state.mode !== 2) {
+        const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll + plane.maneuverRoll);
+        vapor.unshift({
+          left: add3({ x: plane.x, y: plane.y, z: plane.z }, add3(mul3(basis.right, -25), mul3(basis.forward, 10))),
+          right: add3({ x: plane.x, y: plane.y, z: plane.z }, add3(mul3(basis.right, 25), mul3(basis.forward, 10))),
+          age: 0
+        });
+        vapor.length = Math.min(vapor.length, 42);
+      }
+      for (const point of vapor) point.age += dt;
+
+      for (const warning of state.warnings) warning.age += dt;
+      state.warnings = state.warnings.filter((warning, index, all) => {
+        if (all.some((other, i) => i > index && other.text === warning.text)) return false;
+        return warning.age < warning.duration;
+      });
+    }
+
+    function targetCamera() {
+      const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll + plane.maneuverRoll);
+      if (state.mode === 0) {
+        const position = {
+          x: plane.x,
+          y: plane.y + 760,
+          z: plane.z + 500
+        };
+        const forward = normalize3(sub3({ x: plane.x, y: Math.max(0, terrainElevation(plane.x, plane.z)), z: plane.z }, position));
+        return {
+          position,
+          forward,
+          right: { x: 1, y: 0, z: 0 },
+          up: { x: 0, y: 0, z: -1 },
+          fov: 58 * Math.PI / 180
+        };
+      }
+      if (state.mode === 1) {
+        const position = add3(
+          { x: plane.x, y: plane.y, z: plane.z },
+          add3(mul3(basis.forward, -120), mul3(basis.up, 24))
+        );
+        const lookTarget = add3(
+          { x: plane.x, y: plane.y, z: plane.z },
+          add3(mul3(basis.forward, 125), mul3(basis.up, 6))
+        );
+        return {
+          position,
+          forward: normalize3(sub3(lookTarget, position)),
+          right: basis.right,
+          up: basis.up,
+          fov: 64 * Math.PI / 180
+        };
+      }
+      return {
+        position: add3(
+          { x: plane.x, y: plane.y, z: plane.z },
+          add3(mul3(basis.forward, 8), mul3(basis.up, 4.5))
+        ),
+        forward: basis.forward,
+        right: basis.right,
+        up: basis.up,
+        fov: 72 * Math.PI / 180
+      };
+    }
+
+    function updateCamera(dt, aircraft) {
+      const target = targetCamera();
+      const k = 1 - Math.exp(-dt * (state.mode === 2 ? 7.2 : 6.0));
+      camera.position.x = lerp(camera.position.x, target.position.x, k);
+      camera.position.y = lerp(camera.position.y, target.position.y, k);
+      camera.position.z = lerp(camera.position.z, target.position.z, k);
+      camera.forward = normalize3({
+        x: lerp(camera.forward.x, target.forward.x, k),
+        y: lerp(camera.forward.y, target.forward.y, k),
+        z: lerp(camera.forward.z, target.forward.z, k)
+      });
+      camera.up = normalize3({
+        x: lerp(camera.up.x, target.up.x, k),
+        y: lerp(camera.up.y, target.up.y, k),
+        z: lerp(camera.up.z, target.up.z, k)
+      });
+      camera.right = normalize3(cross3(camera.forward, camera.up));
+      camera.up = normalize3(cross3(camera.right, camera.forward));
+      camera.fov = damp(camera.fov, target.fov, 5.5, dt);
+    }
+
+    function resizeCanvases() {
+      const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      const cssHeight = window.innerHeight;
+      let internalHeight = Math.round(clamp(state.renderHeight, MIN_RENDER_HEIGHT, MAX_RENDER_HEIGHT));
+      if (cssHeight < 560) internalHeight = Math.min(internalHeight, 300);
+      let internalWidth = Math.round(internalHeight * aspect);
+      if (internalWidth < 280) {
+        internalWidth = 280;
+        internalHeight = Math.round(internalWidth / aspect);
+      }
+      state.renderWidth = internalWidth;
+      state.renderHeight = internalHeight;
+      worldCanvas.width = internalWidth;
+      worldCanvas.height = internalHeight;
+      hudCanvas.width = internalWidth;
+      hudCanvas.height = internalHeight;
+      hud.imageSmoothingEnabled = false;
+      gl.viewport(0, 0, internalWidth, internalHeight);
+    }
+
+    function updateAdaptiveResolution(frameMs) {
+      if (state.time < 2.5 || state.time - state.lastResolutionChange < 2.5) return;
+      if (frameMs > 29) state.lowFpsFrames++;
+      else state.lowFpsFrames = Math.max(0, state.lowFpsFrames - 0.25);
+      if (state.lowFpsFrames > 38 && state.renderHeight > MIN_RENDER_HEIGHT) {
+        state.renderHeight = Math.max(MIN_RENDER_HEIGHT, state.renderHeight - 36);
+        state.lastResolutionChange = state.time;
+        state.lowFpsFrames = 0;
+        resizeCanvases();
+      }
+    }
+
+    function renderWorld() {
+      gl.clearColor(0.12, 0.09, 0.16, 1);
+      gl.clearDepth(1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+
+      gl.useProgram(landShader);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, heightTexture);
+      gl.uniform1i(gl.getUniformLocation(landShader, "uHeight"), 0);
+      gl.uniform2f(gl.getUniformLocation(landShader, "uResolution"), state.renderWidth, state.renderHeight);
+      gl.uniform3f(gl.getUniformLocation(landShader, "uCameraPosition"), camera.position.x, camera.position.y, camera.position.z);
+      gl.uniform3f(gl.getUniformLocation(landShader, "uCameraForward"), camera.forward.x, camera.forward.y, camera.forward.z);
+      gl.uniform3f(gl.getUniformLocation(landShader, "uCameraRight"), camera.right.x, camera.right.y, camera.right.z);
+      gl.uniform3f(gl.getUniformLocation(landShader, "uCameraUp"), camera.up.x, camera.up.y, camera.up.z);
+      gl.uniform3f(gl.getUniformLocation(landShader, "uSunDirection"), sunDirection.x, sunDirection.y, sunDirection.z);
+      gl.uniform1f(gl.getUniformLocation(landShader, "uTime"), state.time);
+      gl.uniform1f(gl.getUniformLocation(landShader, "uFov"), camera.fov);
+      gl.uniform1f(gl.getUniformLocation(landShader, "uNear"), 1);
+      gl.uniform1f(gl.getUniformLocation(landShader, "uFar"), 15000);
+
+      const impactUniform = new Float32Array(16);
+      for (let i = 0; i < 4; i++) {
+        const impact = impacts[i];
+        if (impact) {
+          impactUniform[i * 4] = impact.x;
+          impactUniform[i * 4 + 1] = impact.z;
+          impactUniform[i * 4 + 2] = impact.radius;
+          impactUniform[i * 4 + 3] = impact.age;
+        }
+      }
+      const impactLocation = gl.getUniformLocation(landShader, "uImpacts");
+      if (impactLocation) gl.uniform4fv(impactLocation, impactUniform);
+
+      gl.bindVertexArray(landVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthFunc(gl.LEQUAL);
+      gl.depthMask(true);
+
+      const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll + plane.maneuverRoll);
+      const view = lookView(camera.position, camera.forward, camera.right, camera.up);
+      const projection = perspective(camera.fov, state.renderWidth / state.renderHeight, 1, 15000);
+      const viewProjection = multiply4(projection, view);
+      const model = modelMatrix({ x: plane.x, y: plane.y, z: plane.z }, basis);
+
+      gl.useProgram(planeShader);
+      gl.uniformMatrix4fv(gl.getUniformLocation(planeShader, "uViewProjection"), false, viewProjection);
+      gl.uniformMatrix4fv(gl.getUniformLocation(planeShader, "uModel"), false, model);
+      gl.uniform3f(gl.getUniformLocation(planeShader, "uSunDirection"), sunDirection.x, sunDirection.y, sunDirection.z);
+      gl.uniform3f(gl.getUniformLocation(planeShader, "uCameraPosition"), camera.position.x, camera.position.y, camera.position.z);
+      gl.bindVertexArray(planeGeometry.vao);
+      gl.drawArrays(gl.TRIANGLES, 0, planeGeometry.count);
+      gl.bindVertexArray(null);
+      gl.disable(gl.DEPTH_TEST);
+    }
+
+    function projectPoint(point) {
+      const relative = sub3(point, camera.position);
+      const z = dot3(relative, camera.forward);
+      if (z <= 0.3) return null;
+      const aspect = state.renderWidth / state.renderHeight;
+      const tanHalf = Math.tan(camera.fov * 0.5);
+      const nx = dot3(relative, camera.right) / (z * tanHalf * aspect);
+      const ny = dot3(relative, camera.up) / (z * tanHalf);
+      return {
+        x: (nx * 0.5 + 0.5) * state.renderWidth,
+        y: (0.5 - ny * 0.5) * state.renderHeight,
+        scale: state.renderHeight / z,
+        z
+      };
+    }
+
+    function text(ctx, value, x, y, options = {}) {
+      const {
+        size = 8,
+        color = "#e9e1d1",
+        align = "left",
+        baseline = "top",
+        font = "IBM Plex Mono",
+        weight = "600",
+        shadow = false
+      } = options;
+      ctx.save();
+      ctx.font = `${weight} ${size}px "${font}", monospace`;
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+      if (shadow) {
+        ctx.fillStyle = "rgba(7, 6, 12, 0.9)";
+        ctx.fillText(value, x + 1, y + 1);
+      }
+      ctx.fillStyle = color;
+      ctx.fillText(value, x, y);
+      ctx.restore();
+    }
+
+    function pixelLine(ctx, x1, y1, x2, y2, color, width = 1) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x1) + 0.5, Math.round(y1) + 0.5);
+      ctx.lineTo(Math.round(x2) + 0.5, Math.round(y2) + 0.5);
+      ctx.stroke();
+    }
+
+    function drawWorldEffects(ctx) {
+      // Ground shadow and low-altitude wake, projected into the low-resolution screen.
+      const ground = terrainElevation(plane.x, plane.z);
+      const shadowHeight = Math.max(ground, SEA_LEVEL) + 1.2;
+      const shadowPoint = projectPoint({ x: plane.x, y: shadowHeight, z: plane.z });
+      if (shadowPoint) {
+        const altitude = Math.max(4, plane.y - shadowHeight);
+        const scale = clamp(900 / Math.max(35, shadowPoint.z) * 18, 3, 28) * clamp(1 - altitude / 1600, 0.22, 1);
+        ctx.save();
+        ctx.translate(shadowPoint.x, shadowPoint.y);
+        ctx.rotate(-plane.heading);
+        ctx.scale(scale * 0.38, scale * 0.9);
+        ctx.fillStyle = "rgba(12, 10, 18, 0.30)";
+        ctx.beginPath();
+        ctx.moveTo(0, -1);
+        ctx.lineTo(0.95, 0);
+        ctx.lineTo(0.55, 0.24);
+        ctx.lineTo(0.18, 0.64);
+        ctx.lineTo(0, 0.45);
+        ctx.lineTo(-0.18, 0.64);
+        ctx.lineTo(-0.55, 0.24);
+        ctx.lineTo(-0.95, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (state.mode === 2) return;
+
+      if (state.afterburnerVisual > 0.08) {
+        const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll + plane.maneuverRoll);
+        const center = { x: plane.x, y: plane.y, z: plane.z };
+        for (const side of [-1, 1]) {
+          const exhaust = add3(
+            center,
+            add3(mul3(basis.right, side * 3.7), mul3(basis.forward, -22.5))
+          );
+          const flameEnd = add3(
+            exhaust,
+            add3(mul3(basis.forward, -(10 + state.afterburnerVisual * 23)), {
+              x: Math.sin(state.time * 44 + side) * 0.45,
+              y: Math.cos(state.time * 39) * 0.28,
+              z: 0
+            })
+          );
+          const a = projectPoint(exhaust);
+          const b = projectPoint(flameEnd);
+          if (!a || !b) continue;
+          ctx.strokeStyle = `rgba(255, 119, 42, ${0.52 + state.afterburnerVisual * 0.34})`;
+          ctx.lineWidth = Math.max(1, Math.round(a.scale * 1.4));
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(255, 245, 207, 0.94)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(lerp(a.x, b.x, 0.62), lerp(a.y, b.y, 0.62));
+          ctx.stroke();
+        }
+      }
+
+      for (let i = vapor.length - 1; i > 0; i--) {
+        const current = vapor[i];
+        const previous = vapor[i - 1];
+        const a1 = projectPoint(current.left);
+        const a2 = projectPoint(previous.left);
+        const b1 = projectPoint(current.right);
+        const b2 = projectPoint(previous.right);
+        if (!a1 || !a2 || !b1 || !b2) continue;
+        const alpha = clamp(1 - current.age / 3.2, 0, 1) * (1 - i / vapor.length) * 0.72;
+        ctx.strokeStyle = `rgba(235, 229, 211, ${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(a1.x, a1.y);
+        ctx.lineTo(a2.x, a2.y);
+        ctx.moveTo(b1.x, b1.y);
+        ctx.lineTo(b2.x, b2.y);
+        ctx.stroke();
+      }
+    }
+
+    function drawParticles(ctx) {
+      for (const puff of smokePuffs) {
+        const p = projectPoint({ x: puff.x, y: puff.y, z: puff.z });
+        if (!p) continue;
+        const life = 1 - puff.age / puff.life;
+        const size = clamp(puff.size * p.scale * 2.5, 1, 12);
+        ctx.fillStyle = `rgba(55, 48, 59, ${clamp(life * 0.48, 0, 0.45)})`;
+        ctx.fillRect(Math.round(p.x - size / 2), Math.round(p.y - size / 2), Math.ceil(size), Math.ceil(size));
+      }
+
+      for (const missile of missiles) {
+        const p = projectPoint(missile.position);
+        if (!p) continue;
+        const size = clamp(p.scale * 1.8, 1, 4);
+        ctx.fillStyle = "#fff4c5";
+        ctx.fillRect(p.x - size / 2, p.y - size / 2, size + 1, size + 1);
+        ctx.fillStyle = "rgba(255, 109, 42, 0.75)";
+        ctx.fillRect(p.x - size * 1.2, p.y - size * 1.2, size * 2.4, size * 2.4);
+      }
+
+      for (const particle of spray) {
+        const p = projectPoint(particle);
+        if (!p) continue;
+        const a = clamp(1 - particle.age / particle.life, 0, 1);
+        ctx.fillStyle = `rgba(205, 237, 228, ${a * 0.75})`;
+        ctx.fillRect(p.x, p.y, 1, 1);
+      }
+
+      for (const explosion of explosions) {
+        const center = projectPoint({ x: explosion.x, y: explosion.y + 2, z: explosion.z });
+        if (!center) continue;
+        if (params.has("impact")) {
+          document.body.dataset.impactProjection = `${Math.round(center.x)},${Math.round(center.y)},${center.scale.toFixed(2)}`;
+        }
+        const age = explosion.age;
+        if (age < 0.38) {
+          const fireScale = clamp(center.scale * 12, 0.7, 2.5);
+          const radius = (8 + age * 80) * fireScale;
+          ctx.fillStyle = `rgba(255, 78, 27, ${clamp(0.76 - age * 1.45, 0, 0.76)})`;
+          ctx.beginPath();
+          ctx.arc(center.x, center.y, radius * 1.25, 0, TAU);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255, 174, 58, 0.92)";
+          ctx.beginPath();
+          ctx.arc(center.x, center.y - radius * 0.12, radius * 0.76, 0, TAU);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255, 249, 206, 0.98)";
+          ctx.beginPath();
+          ctx.arc(center.x, center.y - radius * 0.05, radius * 0.34, 0, TAU);
+          ctx.fill();
+        }
+        if (age < 1.15) {
+          const ring = (age / 1.15) * 34 * clamp(center.scale * 14, 0.3, 1.7);
+          ctx.strokeStyle = `rgba(255, 201, 125, ${0.8 * (1 - age / 1.15)})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(center.x, center.y, ring * 1.4, ring * 0.72, -0.12, 0, TAU);
+          ctx.stroke();
+        }
+        for (const particle of explosion.particles) {
+          if (particle.age > particle.life) continue;
+          const p = projectPoint(particle);
+          if (!p) continue;
+          const life = 1 - particle.age / particle.life;
+          const size = clamp(particle.size * p.scale * 2.6, 2, 9);
+          if (particle.type === "water") {
+            ctx.fillStyle = `rgba(184, 228, 225, ${life * 0.8})`;
+          } else if (life > 0.5) {
+            ctx.fillStyle = `rgba(255, ${Math.round(140 + life * 95)}, 58, ${life})`;
+          } else {
+            ctx.fillStyle = `rgba(61, 51, 57, ${life * 0.85})`;
+          }
+          ctx.fillRect(p.x - size / 2, p.y - size / 2, Math.ceil(size), Math.ceil(size));
+        }
+      }
+    }
+
+    function drawHudFrame(ctx) {
+      const w = state.renderWidth;
+      const h = state.renderHeight;
+      const amber = "#ffc36d";
+      const pale = "#efe8d7";
+      const dim = "rgba(235, 225, 205, 0.54)";
+      const red = "#ff896f";
+      const speedKts = Math.round(260 + plane.airspeed * 2.18);
+      const altitude = Math.round(plane.y * 12.5);
+      const radarAltitude = Math.round((plane.y - Math.max(SEA_LEVEL, terrainElevation(plane.x, plane.z))) * 12.5);
+      const headingDeg = mod(plane.heading * 180 / Math.PI, 360);
+      const pitchDeg = plane.pitch * 180 / Math.PI;
+      const rollDeg = (plane.roll + plane.maneuverRoll) * 180 / Math.PI;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+
+      // Title card.
+      if (state.titleAge < 5.4) {
+        const alpha = clamp(Math.min(state.titleAge / 0.7, (5.4 - state.titleAge) / 1.1), 0, 1);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = "rgba(28, 23, 36, 0.70)";
+        const cardW = Math.min(226, w - 28);
+        ctx.fillRect(14, Math.round(h * 0.16), cardW, 55);
+        ctx.fillStyle = amber;
+        ctx.fillRect(14, Math.round(h * 0.16), 3, 55);
+        text(ctx, "PATROL", 25, Math.round(h * 0.16) + 9, {
+          font: "Press Start 2P",
+          size: w < 500 ? 13 : 16,
+          color: "#fff1d1",
+          shadow: true
+        });
+        text(ctx, "AUTUMN LAKE / FLIGHT 04", 26, Math.round(h * 0.16) + 31, {
+          size: 7,
+          color: amber
+        });
+        text(ctx, "THE LAST LIGHT IS YOURS.", 26, Math.round(h * 0.16) + 43, {
+          size: 6,
+          color: dim
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      if (state.mode < 2) {
+        // Minimal flight HUD.
+        ctx.strokeStyle = "rgba(247, 227, 192, 0.52)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(9.5, 9.5, w - 19, h - 19);
+        text(ctx, "PATROL // AUTUMN LAKE", 15, 15, { size: 7, color: pale, shadow: true });
+        text(ctx, state.modeName[state.mode] + " CAM", w - 62, 15, { size: 7, color: amber, shadow: true });
+        text(ctx, "SPD", 15, h - 38, { size: 6, color: dim });
+        text(ctx, String(speedKts).padStart(3, "0"), 15, h - 30, { size: 10, color: pale });
+        text(ctx, "ALT", 15, h - 20, { size: 6, color: dim });
+        text(ctx, String(altitude).padStart(5, "0"), 31, h - 22, { size: 7, color: pale });
+
+        text(ctx, `MSL ${missileAmmo}`, w - 57, h - 37, { size: 7, color: missileAmmo ? pale : red });
+        text(ctx, `${plane.airspeed >= 180 ? "A/B" : "CRUISE"}`, w - 57, h - 26, {
+          size: 6,
+          color: plane.airspeed >= 180 ? amber : dim
+        });
+
+        if (state.pointer.inside) {
+          const cx = (state.pointer.x * 0.5 + 0.5) * w;
+          const cy = (state.pointer.y * 0.5 + 0.5) * h;
+          ctx.strokeStyle = "rgba(251, 232, 196, 0.66)";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 4, 0, TAU);
+          ctx.moveTo(cx - 9, cy);
+          ctx.lineTo(cx - 5, cy);
+          ctx.moveTo(cx + 5, cy);
+          ctx.lineTo(cx + 9, cy);
+          ctx.moveTo(cx, cy - 9);
+          ctx.lineTo(cx, cy - 5);
+          ctx.moveTo(cx, cy + 5);
+          ctx.lineTo(cx, cy + 9);
+          ctx.stroke();
+        }
+      } else {
+        drawPitchLadder(ctx, pitchDeg, rollDeg, amber);
+        drawCockpitDashboard(ctx);
+
+        // HUD tapes and readouts.
+        const topY = 13;
+        text(ctx, String(Math.round(headingDeg)).padStart(3, "0") + "°", w / 2, topY, {
+          align: "center",
+          size: 8,
+          color: pale,
+          shadow: true
+        });
+        ctx.strokeStyle = "rgba(255, 198, 109, 0.74)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(w / 2 - 31.5, 10.5, 63, 12);
+        pixelLine(ctx, w / 2 - 16, 6, w / 2, 9, amber);
+        pixelLine(ctx, w / 2 + 16, 6, w / 2, 9, amber);
+
+        text(ctx, "IAS", w * 0.34, h * 0.45, { size: 6, color: dim, align: "center" });
+        text(ctx, String(speedKts).padStart(3, "0"), w * 0.34, h * 0.48, {
+          size: 10,
+          color: pale,
+          align: "center",
+          shadow: true
+        });
+        text(ctx, "ALT", w * 0.66, h * 0.45, { size: 6, color: dim, align: "center" });
+        text(ctx, String(altitude).padStart(5, "0"), w * 0.66, h * 0.48, {
+          size: 10,
+          color: pale,
+          align: "center",
+          shadow: true
+        });
+
+        text(ctx, `G ${plane.safeG.toFixed(1)}`, w * 0.18, h * 0.55, { size: 7, color: pale });
+        text(ctx, `R ${radarAltitude || 0}`, w * 0.18, h * 0.55 + 11, { size: 7, color: dim });
+        text(ctx, `FOX ${missileAmmo}`, w - 15, h * 0.55, { size: 7, color: missileAmmo ? amber : red, align: "right" });
+        text(ctx, reloadTimer > 0 ? `RLD ${Math.max(0, reloadTimer).toFixed(1)}` : "ARMED", w - 15, h * 0.55 + 11, {
+          size: 6,
+          color: reloadTimer > 0 ? red : amber,
+          align: "right"
+        });
+
+        if (state.afterburnerVisual > 0.35) {
+          text(ctx, "AFTERBURNER", w / 2, h * 0.39, {
+            size: 7,
+            color: amber,
+            align: "center",
+            shadow: true
+          });
+        }
+        const warning = state.warnings[0];
+        if (warning) {
+          const blink = Math.sin(warning.age * 18) > -0.2;
+          if (blink) {
+            text(ctx, warning.text, w / 2, h * 0.34, {
+              size: 8,
+              color: red,
+              align: "center",
+              shadow: true
+            });
+          }
+        }
+      }
+
+      // Mode label appears after camera cycling.
+      if (state.modeFlash > 0) {
+        ctx.globalAlpha = clamp(state.modeFlash / 0.35, 0, 1);
+        ctx.fillStyle = "rgba(25, 20, 33, 0.72)";
+        ctx.fillRect(w / 2 - 42, 27, 84, 16);
+        text(ctx, `${state.modeName[state.mode]} VIEW`, w / 2, 32, {
+          size: 7,
+          color: amber,
+          align: "center"
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      // Quiet controls strip.
+      const stripH = state.mode === 2 ? 15 : 17;
+      ctx.fillStyle = "rgba(19, 16, 27, 0.74)";
+      ctx.fillRect(0, h - stripH, w, stripH);
+      const hint = w > 720
+        ? "MOUSE STEER  /  HOLD LMB BURN  /  CLICK ROLL  /  R/F MISSILE  /  SPACE CAMERA  /  M SOUND"
+        : "MOUSE STEER / HOLD LMB BURN / R/F MISSILE / SPACE VIEW";
+      text(ctx, hint, 10, h - stripH + 5, {
+        size: w > 720 ? 6 : 5,
+        color: "rgba(237, 228, 209, 0.66)"
+      });
+      ctx.restore();
+    }
+
+    function drawPitchLadder(ctx, pitchDeg, rollDeg, color) {
+      const w = state.renderWidth;
+      const h = state.renderHeight;
+      const centerX = w / 2;
+      const centerY = state.mode === 2 ? h * 0.5 : h * 0.42;
+      const pixelsPerDegree = h / (camera.fov * 180 / Math.PI) * 0.82;
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(-rollDeg * Math.PI / 180);
+      for (let angle = -30; angle <= 30; angle += 5) {
+        const y = (pitchDeg - angle) * pixelsPerDegree;
+        if (Math.abs(y) > h * 0.26) continue;
+        const half = angle === 0 ? 34 : (22 - Math.abs(angle) * 0.15);
+        ctx.strokeStyle = angle === 0 ? "rgba(255, 198, 109, 0.86)" : "rgba(255, 221, 169, 0.54)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash(angle < 0 ? [4, 3] : []);
+        ctx.beginPath();
+        ctx.moveTo(-half, y);
+        ctx.lineTo(-8, y);
+        ctx.moveTo(8, y);
+        ctx.lineTo(half, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (angle !== 0) {
+          text(ctx, String(Math.abs(angle)), -half - 9, y, {
+            size: 5,
+            color: "rgba(255, 224, 171, 0.58)",
+            baseline: "middle"
+          });
+          text(ctx, String(Math.abs(angle)), half + 3, y, {
+            size: 5,
+            color: "rgba(255, 224, 171, 0.58)",
+            baseline: "middle"
+          });
+        }
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(-22, 0);
+      ctx.lineTo(-8, 0);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(8, 0);
+      ctx.lineTo(22, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGauge(ctx, x, y, size, label, value, unit, color = "#ffc36d") {
+      ctx.fillStyle = "rgba(10, 9, 15, 0.92)";
+      ctx.fillRect(x, y, size, size);
+      ctx.strokeStyle = "rgba(236, 222, 199, 0.44)";
+      ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+      text(ctx, label, x + 3, y + 3, { size: 4, color: "rgba(219, 208, 191, 0.63)" });
+      text(ctx, value, x + 3, y + size - 9, { size: 7, color });
+      text(ctx, unit, x + size - 3, y + size - 8, { size: 4, color: "rgba(219, 208, 191, 0.58)", align: "right" });
+    }
+
+    function drawCockpitDashboard(ctx) {
+      const w = state.renderWidth;
+      const h = state.renderHeight;
+      if (w < 360) {
+        drawCompactCockpit(ctx);
+        return;
+      }
+      const panelY = Math.round(h * 0.67);
+      const panelH = h - panelY;
+      const speedKts = Math.round(260 + plane.airspeed * 2.18);
+      const altitude = Math.round(plane.y * 12.5);
+      const radarAlt = Math.max(0, Math.round((plane.y - Math.max(SEA_LEVEL, terrainElevation(plane.x, plane.z))) * 12.5));
+      const heading = mod(plane.heading * 180 / Math.PI, 360);
+      const pitch = plane.pitch * 180 / Math.PI;
+      const roll = (plane.roll + plane.maneuverRoll) * 180 / Math.PI;
+      const verticalSpeed = Math.round(Math.sin(plane.pitch) * plane.airspeed * 7.2);
+
+      ctx.fillStyle = "#17141e";
+      ctx.beginPath();
+      ctx.moveTo(0, panelY + 7);
+      ctx.lineTo(Math.round(w * 0.09), panelY);
+      ctx.lineTo(Math.round(w * 0.91), panelY);
+      ctx.lineTo(w, panelY + 7);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#4c4252";
+      ctx.fillRect(Math.round(w * 0.09), panelY - 1, Math.round(w * 0.82), 2);
+      ctx.fillStyle = "#0d0b11";
+      ctx.fillRect(0, panelY + 3, w, 2);
+
+      const margin = Math.max(6, Math.round(w * 0.018));
+      const gaugeSize = Math.min(46, Math.max(31, Math.round(panelH * 0.48)));
+      const gap = Math.max(4, Math.round(w * 0.007));
+      const startX = margin;
+      const top = panelY + 7;
+
+      // Airspeed and true altitude.
+      drawGauge(ctx, startX, top, gaugeSize, "IAS", String(speedKts).padStart(3, "0"), "KT");
+      drawGauge(ctx, startX + gaugeSize + gap, top, gaugeSize, "ALT", String(altitude).padStart(5, "0"), "FT", "#e8e0d0");
+
+      // Artificial horizon.
+      const adiX = Math.round(w * 0.37);
+      const adiY = top;
+      const adiW = gaugeSize + 14;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(adiX, adiY, adiW, gaugeSize);
+      ctx.clip();
+      ctx.fillStyle = "#31505a";
+      ctx.fillRect(adiX, adiY, adiW, gaugeSize);
+      ctx.fillStyle = "#6c4a2e";
+      ctx.fillRect(adiX, adiY + gaugeSize * 0.5, adiW, gaugeSize);
+      ctx.save();
+      ctx.translate(adiX + adiW / 2, adiY + gaugeSize / 2 + pitch * 0.76);
+      ctx.rotate(-roll * Math.PI / 180);
+      pixelLine(ctx, -adiW * 0.7, 0, -9, 0, "#f0dfb9");
+      pixelLine(ctx, 9, 0, adiW * 0.7, 0, "#f0dfb9");
+      pixelLine(ctx, -7, 0, 0, 4, "#f0dfb9");
+      pixelLine(ctx, 7, 0, 0, 4, "#f0dfb9");
+      ctx.restore();
+      ctx.strokeStyle = "#111019";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(adiX + 0.5, adiY + 0.5, adiW - 1, gaugeSize - 1);
+      ctx.restore();
+      text(ctx, "ADI", adiX + 3, adiY + 3, { size: 4, color: "#d7cfc0" });
+      text(ctx, `${pitch >= 0 ? "+" : ""}${pitch.toFixed(0)}`, adiX + 3, adiY + gaugeSize - 8, { size: 5, color: "#e9dfca" });
+
+      // Turn and slip.
+      const turnW = 31;
+      const turnX = adiX + adiW + gap;
+      ctx.fillStyle = "#0d0c12";
+      ctx.fillRect(turnX, top, turnW, gaugeSize);
+      ctx.strokeStyle = "#665c6b";
+      ctx.strokeRect(turnX + 0.5, top + 0.5, turnW - 1, gaugeSize - 1);
+      text(ctx, "TURN", turnX + 3, top + 3, { size: 4, color: "#aaa0aa" });
+      pixelLine(ctx, turnX + turnW / 2, top + 12, turnX + turnW / 2, top + gaugeSize - 10, "#675d69");
+      pixelLine(ctx, turnX + 8, top + 18, turnX + turnW - 8, top + 18, "#675d69");
+      ctx.save();
+      ctx.translate(turnX + turnW / 2 + clamp(plane.turnSmooth * 13, -11, 11), top + 21);
+      ctx.rotate(clamp(plane.turnSmooth * 0.55, -0.55, 0.55));
+      ctx.fillStyle = "#edcf91";
+      ctx.fillRect(-1, -7, 2, 14);
+      ctx.fillRect(-5, -1, 10, 2);
+      ctx.restore();
+      text(ctx, `${plane.turnSmooth > 0.02 ? "R" : plane.turnSmooth < -0.02 ? "L" : "S"}`, turnX + 3, top + gaugeSize - 8, { size: 5, color: "#d8ceba" });
+
+      // Heading compass.
+      const compX = turnX + turnW + gap;
+      ctx.fillStyle = "#0d0c12";
+      ctx.fillRect(compX, top, turnW + 3, gaugeSize);
+      ctx.strokeStyle = "#665c6b";
+      ctx.strokeRect(compX + 0.5, top + 0.5, turnW + 2, gaugeSize - 1);
+      text(ctx, "HDG", compX + 3, top + 3, { size: 4, color: "#aaa0aa" });
+      const ticks = [-20, -10, 0, 10, 20];
+      for (const tick of ticks) {
+        const tx = compX + (turnW + 3) / 2 + tick * 0.72;
+        const major = tick === 0;
+        pixelLine(ctx, tx, top + 13, tx, top + 13 + (major ? 8 : 4), major ? "#ffc36d" : "#766a76");
+      }
+      text(ctx, String(Math.round(heading)).padStart(3, "0") + "°", compX + (turnW + 3) / 2, top + 26, {
+        size: 6,
+        color: "#e8dcc7",
+        align: "center"
+      });
+
+      // Radar. Amber sweep and real height-map land returns.
+      const radarSize = gaugeSize + 8;
+      const radarX = Math.round(w * 0.63);
+      const radarY = top;
+      ctx.fillStyle = "#080b0b";
+      ctx.fillRect(radarX, radarY, radarSize, radarSize);
+      ctx.strokeStyle = "#735d3d";
+      ctx.strokeRect(radarX + 0.5, radarY + 0.5, radarSize - 1, radarSize - 1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(radarX + radarSize / 2, radarY + radarSize / 2, radarSize * 0.42, 0, TAU);
+      ctx.clip();
+      for (let rz = -4; rz <= 4; rz++) {
+        for (let rx = -4; rx <= 4; rx++) {
+          if (rx * rx + rz * rz > 16) continue;
+          const angle = plane.heading;
+          const wx = plane.x + (Math.cos(angle) * rx - Math.sin(angle) * rz) * 68;
+          const wz = plane.z + (Math.sin(angle) * rx + Math.cos(angle) * rz) * 68;
+          if (terrainElevation(wx, wz) > SEA_LEVEL + 2) {
+            ctx.fillStyle = Math.abs(rx) + Math.abs(rz) < 4 ? "#b07b41" : "#62513b";
+            ctx.fillRect(radarX + radarSize / 2 + rx * 2.4, radarY + radarSize / 2 + rz * 2.4, 2, 2);
+          }
+        }
+      }
+      const sweep = state.time * 1.9 - Math.PI / 2;
+      ctx.fillStyle = "rgba(255, 185, 91, 0.15)";
+      ctx.beginPath();
+      ctx.moveTo(radarX + radarSize / 2, radarY + radarSize / 2);
+      ctx.arc(radarX + radarSize / 2, radarY + radarSize / 2, radarSize * 0.55, sweep - 0.35, sweep);
+      ctx.closePath();
+      ctx.fill();
+      pixelLine(ctx, radarX + radarSize / 2, radarY + radarSize / 2, radarX + radarSize / 2 + Math.cos(sweep) * radarSize * 0.5, radarY + radarSize / 2 + Math.sin(sweep) * radarSize * 0.5, "#ffc36d");
+      ctx.restore();
+      text(ctx, "GND", radarX + 3, radarY + 3, { size: 4, color: "#d0a365" });
+      text(ctx, `${radarAlt}`, radarX + radarSize - 3, radarY + radarSize - 8, { size: 5, color: "#ffc36d", align: "right" });
+
+      // Engine gauges and throttle.
+      const engX = radarX + radarSize + gap;
+      drawGauge(ctx, engX, top, Math.min(38, w - engX - margin - 17), "ENG", String(Math.round(63 + state.afterburnerVisual * 37)), "%", "#e8c788");
+      const throttleX = w - margin - 10;
+      ctx.fillStyle = "#08070c";
+      ctx.fillRect(throttleX, top, 8, gaugeSize);
+      ctx.strokeStyle = "#64596a";
+      ctx.strokeRect(throttleX + 0.5, top + 0.5, 7, gaugeSize - 1);
+      const throttleY = top + gaugeSize - 10 - state.afterburnerVisual * (gaugeSize - 20);
+      ctx.fillStyle = state.afterburnerVisual > 0.35 ? "#ffad5d" : "#caad79";
+      ctx.fillRect(throttleX - 3, throttleY, 14, 5);
+      text(ctx, "THR", throttleX - 1, top - 6, { size: 4, color: "#c8b9a0" });
+
+      // Bottom placards: remaining instruments, VSI, clock, warnings.
+      const bottomY = panelY + gaugeSize + 11;
+      text(ctx, "V/S", margin, bottomY, { size: 4, color: "#7e7481" });
+      text(ctx, `${verticalSpeed >= 0 ? "+" : ""}${verticalSpeed}`, margin + 15, bottomY, {
+        size: 5,
+        color: "#ddcfb8"
+      });
+      text(ctx, "RDR", margin + 54, bottomY, { size: 4, color: "#7e7481" });
+      text(ctx, `${radarAlt} FT`, margin + 70, bottomY, { size: 5, color: "#ddcfb8" });
+
+      const now = new Date();
+      const clock = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      text(ctx, "LOCAL", w / 2 - 12, bottomY, { size: 4, color: "#7e7481", align: "center" });
+      text(ctx, clock, w / 2 + 14, bottomY, { size: 5, color: "#e4d8c3" });
+
+      const warnColor = radarAlt < 900 ? "#ff8066" : radarAlt < 1600 ? "#ffc36d" : "#7d8e77";
+      text(ctx, "PULL UP", w - margin - 51, bottomY, { size: 4, color: warnColor, align: "right" });
+      text(ctx, "MISSILE", w - margin - 51, bottomY + 7, { size: 4, color: missileAmmo ? "#936e51" : "#ff8066", align: "right" });
+      text(ctx, "BURN", w - margin - 51, bottomY + 14, { size: 4, color: state.afterburnerVisual > 0.35 ? "#ffc36d" : "#6b605e", align: "right" });
+
+      // Simple frame screws and edge wear.
+      ctx.fillStyle = "#756572";
+      for (const sx of [margin, Math.round(w / 2), w - margin]) {
+        ctx.fillRect(sx, panelY + 4, 1, 1);
+      }
+    }
+
+    function drawCompactCockpit(ctx) {
+      const w = state.renderWidth;
+      const h = state.renderHeight;
+      const panelY = Math.round(h * 0.7);
+      const margin = 7;
+      const gap = 5;
+      const cellW = Math.floor((w - margin * 2 - gap * 2) / 3);
+      const cellH = 31;
+      const top = panelY + 14;
+      const speedKts = Math.round(260 + plane.airspeed * 2.18);
+      const altitude = Math.round(plane.y * 12.5);
+      const radarAlt = Math.max(0, Math.round((plane.y - Math.max(SEA_LEVEL, terrainElevation(plane.x, plane.z))) * 12.5));
+      const heading = mod(plane.heading * 180 / Math.PI, 360);
+      const pitch = plane.pitch * 180 / Math.PI;
+      const roll = (plane.roll + plane.maneuverRoll) * 180 / Math.PI;
+      const verticalSpeed = Math.round(Math.sin(plane.pitch) * plane.airspeed * 7.2);
+
+      ctx.fillStyle = "#17141e";
+      ctx.beginPath();
+      ctx.moveTo(0, panelY + 7);
+      ctx.lineTo(13, panelY);
+      ctx.lineTo(w - 13, panelY);
+      ctx.lineTo(w, panelY + 7);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#4c4252";
+      ctx.fillRect(13, panelY - 1, w - 26, 2);
+
+      drawGauge(ctx, margin, top, cellW, "IAS", String(speedKts).padStart(3, "0"), "KT");
+      drawGauge(ctx, margin + cellW + gap, top, cellW, "ALT", String(altitude).padStart(5, "0"), "FT", "#e8e0d0");
+      drawGauge(ctx, margin + (cellW + gap) * 2, top, cellW, "RDR", String(radarAlt).padStart(4, "0"), "FT", "#d59b5d");
+
+      const secondY = top + cellH + 6;
+      drawGauge(ctx, margin, secondY, cellW, "HDG", String(Math.round(heading)).padStart(3, "0") + "°", "", "#e8e0d0");
+
+      const adiX = margin + cellW + gap;
+      ctx.fillStyle = "#0a0a10";
+      ctx.fillRect(adiX, secondY, cellW, cellH);
+      ctx.strokeStyle = "#665c6b";
+      ctx.strokeRect(adiX + 0.5, secondY + 0.5, cellW - 1, cellH - 1);
+      text(ctx, "ADI", adiX + 3, secondY + 3, { size: 4, color: "#aaa0aa" });
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(adiX + 2, secondY + 9, cellW - 4, cellH - 12);
+      ctx.clip();
+      ctx.fillStyle = "#31505a";
+      ctx.fillRect(adiX + 2, secondY + 9, cellW - 4, cellH / 2);
+      ctx.fillStyle = "#6c4a2e";
+      ctx.fillRect(adiX + 2, secondY + 9 + cellH / 2, cellW - 4, cellH / 2);
+      ctx.save();
+      ctx.translate(adiX + cellW / 2, secondY + 16 + pitch * 0.3);
+      ctx.rotate(-roll * Math.PI / 180);
+      pixelLine(ctx, -cellW * 0.35, 0, cellW * 0.35, 0, "#f0dfb9");
+      ctx.restore();
+      ctx.restore();
+
+      const engX = margin + (cellW + gap) * 2;
+      drawGauge(ctx, engX, secondY, cellW, "ENG", String(Math.round(63 + state.afterburnerVisual * 37)), "%", "#d8b777");
+
+      const now = new Date();
+      const clock = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit" });
+      const bottomY = secondY + cellH + 8;
+      text(ctx, `V/S ${verticalSpeed >= 0 ? "+" : ""}${verticalSpeed}`, margin, bottomY, { size: 5, color: "#c9bda8" });
+      text(ctx, plane.turnSmooth > 0.02 ? "TURN R" : plane.turnSmooth < -0.02 ? "TURN L" : "WINGS LEVEL", w / 2, bottomY, {
+        size: 5,
+        color: "#9e929e",
+        align: "center"
+      });
+      text(ctx, clock, w - margin, bottomY, { size: 5, color: "#d8ccb7", align: "right" });
+    }
+
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const rawDt = Math.min(0.05, (now - state.lastTime) / 1000);
+      const ms = now - state.lastTime;
+      state.lastTime = now;
+      if (!state.started) return;
+      state.frame++;
+      update(rawDt);
+      renderWorld();
+      hud.clearRect(0, 0, state.renderWidth, state.renderHeight);
+      hud.imageSmoothingEnabled = false;
+      drawWorldEffects(hud);
+      drawParticles(hud);
+      drawHudFrame(hud);
+      updateAdaptiveResolution(ms);
+      document.body.dataset.state = "running";
+      debugState.info = {
+        mode: state.modeName[state.mode],
+        ammo: missileAmmo,
+        missiles: missiles.length,
+        impacts: impacts.length,
+        x: plane.x,
+        y: plane.y,
+        z: plane.z,
+        heading: plane.heading,
+        pitch: plane.pitch,
+        renderWidth: state.renderWidth,
+        renderHeight: state.renderHeight
+      };
+      if (state.frame % 45 === 0) {
+        document.body.dataset.telemetry = JSON.stringify(debugState.info);
+      }
+    }
+
+    function applyDebugParams() {
+      const view = params.get("view");
+      if (view === "chase") state.mode = 1;
+      if (view === "cockpit") state.mode = 2;
+      if (view === "top") state.mode = 0;
+      const requestedMode = state.mode;
+      if (params.has("x")) plane.x = Number(params.get("x")) || plane.x;
+      if (params.has("z")) plane.z = Number(params.get("z")) || plane.z;
+      if (params.has("y")) plane.y = Number(params.get("y")) || plane.y;
+      if (params.has("heading")) plane.heading = Number(params.get("heading")) || plane.heading;
+      if (params.has("pitch")) plane.pitch = Number(params.get("pitch")) || 0;
+      if (params.has("burn")) state.touch.burn = true;
+      plane.y = Math.max(plane.y, terrainElevation(plane.x, plane.z) + 145);
+      const target = targetCamera();
+      camera.position = { ...target.position };
+      camera.forward = { ...target.forward };
+      camera.right = { ...target.right };
+      camera.up = { ...target.up };
+      camera.fov = target.fov;
+      state.mode = requestedMode;
+      if (params.has("title")) state.titleAge = 0.1;
+      else state.titleAge = 8;
+      const delay = Number(params.get("autofire") || 0);
+      if (delay > 0) {
+        setTimeout(() => {
+          if (state.mode !== 2) fireMissile();
+          else {
+            state.mode = 1;
+            fireMissile();
+          }
+        }, delay);
+      }
+      if (params.has("impact")) {
+        const basis = aircraftBasis(plane.heading, plane.pitch, plane.roll);
+        const target = add3(
+          { x: plane.x, y: plane.y, z: plane.z },
+          mul3(basis.forward, 900)
+        );
+        target.y = Math.max(SEA_LEVEL, terrainElevation(target.x, target.z));
+        spawnImpact(target);
+        if (params.has("freeze")) state.paused = true;
+      }
+      if (params.has("roll")) setTimeout(triggerBarrelRoll, Number(params.get("roll")));
+      if (params.has("soak")) {
+        const interval = setInterval(() => {
+          const t = state.time;
+          state.pointer.active = true;
+          state.pointer.inside = true;
+          state.pointer.x = Math.sin(t * 0.67) * 0.82;
+          state.pointer.y = Math.sin(t * 0.41 + 1.2) * 0.38;
+          state.touch.burn = Math.floor(t / 4) % 3 === 0;
+          if (Math.floor(t * 2) % 25 === 0) triggerBarrelRoll();
+          if (Math.floor(t * 3) % 17 === 0) fireMissile();
+          if (Math.floor(t) % 19 === 0 && state.mode !== 2) cycleCamera();
+        }, 90);
+        setTimeout(() => clearInterval(interval), 180000);
+      }
+      if (params.has("survey")) {
+        const columns = 28;
+        const rows = 20;
+        const candidates = [];
+        let waterSamples = 0;
+        let allSamples = 0;
+        let heightTotal = 0;
+        for (let gy = 0; gy < rows; gy++) {
+          for (let gx = 0; gx < columns; gx++) {
+            const x = -WORLD_SIZE * 0.5 + (gx + 0.5) * WORLD_SIZE / columns;
+            const z = -WORLD_SIZE * 0.5 + (gy + 0.5) * WORLD_SIZE / rows;
+            const centerHeight = terrainElevation(x, z);
+            let water = 0;
+            let lowland = 0;
+            let peaks = 0;
+            let localMin = 999;
+            let localMax = -999;
+            const radius = 760;
+            for (let ring = 1; ring <= 4; ring++) {
+              for (let a = 0; a < 12; a++) {
+                const angle = a / 12 * TAU;
+                const r = radius * ring / 4;
+                const h = terrainElevation(x + Math.cos(angle) * r, z + Math.sin(angle) * r);
+                const isWater = h < SEA_LEVEL;
+                if (isWater) water++;
+                if (h > SEA_LEVEL && h < 170) lowland++;
+                if (h > 300) peaks++;
+                localMin = Math.min(localMin, h);
+                localMax = Math.max(localMax, h);
+                heightTotal += h;
+                waterSamples += isWater ? 1 : 0;
+                allSamples++;
+              }
+            }
+            const waterFraction = water / 48;
+            const shoreScore = 1 - Math.abs(waterFraction - 0.48) * 2;
+            const score = shoreScore + (centerHeight < SEA_LEVEL ? 0.32 : 0) + lowland / 96 + (localMax - localMin) / 900 + peaks * 0.005;
+            candidates.push({
+              x: Math.round(x),
+              z: Math.round(z),
+              score: Number(score.toFixed(3)),
+              water: Number(waterFraction.toFixed(2)),
+              center: Math.round(centerHeight),
+              range: Math.round(localMax - localMin)
+            });
+          }
+        }
+        candidates.sort((a, b) => b.score - a.score);
+        document.body.dataset.survey = JSON.stringify({
+          water: Number((waterSamples / allSamples).toFixed(3)),
+          averageHeight: Math.round(heightTotal / allSamples),
+          candidates: candidates.slice(0, 12)
+        });
+      }
+    }
+
+    async function boot() {
+      try {
+        landShader = createProgram(terrainVertexSource, terrainFragmentSource);
+        planeShader = createProgram(planeVertexSource, planeFragmentSource);
+        landVao = createQuad();
+        planeGeometry = setupPlaneGeometry();
+        resizeCanvases();
+        setupInput();
+        const terrain = await loadTerrain();
+        uploadHeightfield(terrain.data, terrain.size);
+        applyDebugParams();
+        // Give the terrain a sane altitude before the first frame.
+        plane.y = Math.max(plane.y, terrainElevation(plane.x, plane.z) + 145);
+        state.started = true;
+        loading.classList.add("hidden");
+        setTimeout(() => loading.remove(), 650);
+        document.body.dataset.state = "ready";
+        requestAnimationFrame(frame);
+      } catch (error) {
+        state.error = String(error && error.stack || error);
+        debugState.error = state.error;
+        console.error(error);
+        document.body.dataset.state = "error";
+        $("#unsupported").style.display = "grid";
+        $("#unsupported").textContent = "The patrol could not initialize: " + (error.message || error);
+        loading.style.display = "none";
+      }
+    }
+
+    let landVao = null;
+    boot();
+  })();
+  </script>
+</body>
+</html>
